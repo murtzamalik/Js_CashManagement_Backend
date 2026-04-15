@@ -1,0 +1,209 @@
+package org.ais.jcash.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import java.io.Serializable;
+import javax.persistence.*;
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.List;
+
+
+/**
+ * The persistent class for the TBL_OTP database table.
+ * 
+ */
+@Entity
+@Table(name="TBL_OTP")
+@NamedQuery(name="TblOtp.findAll", query="SELECT t FROM TblOtp t")
+public class TblOtp implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@SequenceGenerator(name="TBL_OTP_OTPID_GENERATOR", sequenceName="TBL_OTP_SEQ",allocationSize = 1)
+	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="TBL_OTP_OTPID_GENERATOR")
+	@Column(name="OTP_ID")
+	private long otpId;
+
+	@Temporal(TemporalType.DATE)
+	private Date createdate;
+
+	private BigDecimal createuser;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name="EFFECTIVE_FROM")
+	private Date effectiveFrom;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name="EFFECTIVE_TO")
+	private Date effectiveTo;
+
+	@Column(name="IS_EXPIRED")
+	private String isExpired;
+
+	@Column(name="IS_VERIFIED")
+	private String isVerified;
+
+	@Temporal(TemporalType.DATE)
+	private Date lastupdatedate;
+
+	private BigDecimal lastupdateuser;
+
+	@Column(name="OTP_TRIES")
+	private BigDecimal otpTries;
+
+	private String otpin;
+
+	private BigDecimal updateindex;
+
+	@Column(name="USER_ID")
+	private BigDecimal userId;
+
+	//bi-directional many-to-one association to LkpOtpType
+	@ManyToOne
+	@JoinColumn(name="OTP_TYPE_ID")
+	private LkpOtpType lkpOtpType;
+
+	//bi-directional many-to-one association to TblSmsMsgEmail
+	@JsonIgnore
+	@OneToMany(mappedBy="tblOtp")
+	private List<TblSmsMsgEmail> tblSmsMsgEmails;
+
+	public TblOtp() {
+	}
+
+	public long getOtpId() {
+		return this.otpId;
+	}
+
+	public void setOtpId(long otpId) {
+		this.otpId = otpId;
+	}
+
+	public Date getCreatedate() {
+		return this.createdate;
+	}
+
+	public void setCreatedate(Date createdate) {
+		this.createdate = createdate;
+	}
+
+	public BigDecimal getCreateuser() {
+		return this.createuser;
+	}
+
+	public void setCreateuser(BigDecimal createuser) {
+		this.createuser = createuser;
+	}
+
+	public Date getEffectiveFrom() {
+		return this.effectiveFrom;
+	}
+
+	public void setEffectiveFrom(Date effectiveFrom) {
+		this.effectiveFrom = effectiveFrom;
+	}
+
+	public Date getEffectiveTo() {
+		return this.effectiveTo;
+	}
+
+	public void setEffectiveTo(Date effectiveTo) {
+		this.effectiveTo = effectiveTo;
+	}
+
+	public String getIsExpired() {
+		return this.isExpired;
+	}
+
+	public void setIsExpired(String isExpired) {
+		this.isExpired = isExpired;
+	}
+
+	public String getIsVerified() {
+		return this.isVerified;
+	}
+
+	public void setIsVerified(String isVerified) {
+		this.isVerified = isVerified;
+	}
+
+	public Date getLastupdatedate() {
+		return this.lastupdatedate;
+	}
+
+	public void setLastupdatedate(Date lastupdatedate) {
+		this.lastupdatedate = lastupdatedate;
+	}
+
+	public BigDecimal getLastupdateuser() {
+		return this.lastupdateuser;
+	}
+
+	public void setLastupdateuser(BigDecimal lastupdateuser) {
+		this.lastupdateuser = lastupdateuser;
+	}
+
+	public BigDecimal getOtpTries() {
+		return this.otpTries;
+	}
+
+	public void setOtpTries(BigDecimal otpTries) {
+		this.otpTries = otpTries;
+	}
+
+	public String getOtpin() {
+		return this.otpin;
+	}
+
+	public void setOtpin(String otpin) {
+		this.otpin = otpin;
+	}
+
+	public BigDecimal getUpdateindex() {
+		return this.updateindex;
+	}
+
+	public void setUpdateindex(BigDecimal updateindex) {
+		this.updateindex = updateindex;
+	}
+
+	public BigDecimal getUserId() {
+		return this.userId;
+	}
+
+	public void setUserId(BigDecimal userId) {
+		this.userId = userId;
+	}
+
+	public LkpOtpType getLkpOtpType() {
+		return this.lkpOtpType;
+	}
+
+	public void setLkpOtpType(LkpOtpType lkpOtpType) {
+		this.lkpOtpType = lkpOtpType;
+	}
+
+	public List<TblSmsMsgEmail> getTblSmsMsgEmails() {
+		return this.tblSmsMsgEmails;
+	}
+
+	public void setTblSmsMsgEmails(List<TblSmsMsgEmail> tblSmsMsgEmails) {
+		this.tblSmsMsgEmails = tblSmsMsgEmails;
+	}
+
+	public TblSmsMsgEmail addTblSmsMsgEmail(TblSmsMsgEmail tblSmsMsgEmail) {
+		getTblSmsMsgEmails().add(tblSmsMsgEmail);
+		tblSmsMsgEmail.setTblOtp(this);
+
+		return tblSmsMsgEmail;
+	}
+
+	public TblSmsMsgEmail removeTblSmsMsgEmail(TblSmsMsgEmail tblSmsMsgEmail) {
+		getTblSmsMsgEmails().remove(tblSmsMsgEmail);
+		tblSmsMsgEmail.setTblOtp(null);
+
+		return tblSmsMsgEmail;
+	}
+
+}
