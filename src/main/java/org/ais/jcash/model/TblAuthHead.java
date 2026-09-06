@@ -1,7 +1,5 @@
 package org.ais.jcash.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.io.Serializable;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -44,7 +42,6 @@ public class TblAuthHead implements Serializable {
 	private BigDecimal updateindex;
 
 	//bi-directional many-to-one association to TblAuthDetail
-	@JsonIgnore
 	@OneToMany(mappedBy="tblAuthHead")
 	private List<TblAuthDetail> tblAuthDetails;
 

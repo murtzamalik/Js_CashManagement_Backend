@@ -31,7 +31,7 @@ import java.util.List;
  */
 
 
-@Api(value = "Cash Management Collection Update Api", description = "UPDATE COllection API For Cash Management")
+@Api(value = "JS Cash Management Collection Update Api", description = "UPDATE COllection API For JS Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/fin/collection")

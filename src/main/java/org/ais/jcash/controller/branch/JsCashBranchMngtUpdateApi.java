@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 
-@Api(value = "Cash Management Api Login Post Api", description = "POST LOGIN  API For Cash Management")
+@Api(value = "JS Cash Management Api Login Post Api", description = "POST LOGIN  API For JS Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/nonFin")

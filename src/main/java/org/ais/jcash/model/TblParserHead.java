@@ -1,7 +1,5 @@
 package org.ais.jcash.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.io.Serializable;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -58,12 +56,10 @@ public class TblParserHead implements Serializable {
 	private BigDecimal updateindex;
 
 	//bi-directional many-to-one association to TblParserCompanyConfig
-	@JsonIgnore
 	@OneToMany(mappedBy="tblParserHead")
 	private List<TblParserCompanyConfig> tblParserCompanyConfigs;
 
 	//bi-directional many-to-one association to TblParserDetail
-	@JsonIgnore
 	@OneToMany(mappedBy="tblParserHead")
 	private List<TblParserDetail> tblParserDetails;
 

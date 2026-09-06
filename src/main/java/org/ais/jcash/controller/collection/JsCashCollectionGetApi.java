@@ -28,7 +28,7 @@ import java.util.List;
  * Project : jcash
  */
 
-@Api(value = "Cash Management Collection GET Api", description = "GET COllection API For Cash Management")
+@Api(value = "JS Cash Management Collection GET Api", description = "GET COllection API For JS Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/fin")

@@ -29,7 +29,7 @@ import java.util.*;
  */
 
 
-@Api(value = "Cash Management Api Lov Get Api", description = "Get Lov Api For Cash Management")
+@Api(value = "JS Cash Management Api Lov Get Api", description = "Get Lov Api For JS Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/lov")

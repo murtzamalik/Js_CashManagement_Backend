@@ -22,7 +22,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 
-@Api(value = "Cash Management Api Non Financial Get Api", description = "GET NON FIN API For Cash Management")
+@Api(value = "JS Cash Management Api Non Financial Get Api", description = "GET NON FIN API For JS Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/nonFin")

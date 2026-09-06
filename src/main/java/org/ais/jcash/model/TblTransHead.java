@@ -1,7 +1,5 @@
 package org.ais.jcash.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.io.Serializable;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -134,22 +132,18 @@ public class TblTransHead implements Serializable {
 	private List<TblAuthHead> tblAuthHeads;
 
 	//bi-directional many-to-one association to TblCashOverCounter
-	@JsonIgnore
 	@OneToMany(mappedBy="tblTransHead1")
 	private List<TblCashOverCounter> tblCashOverCounters1;
 
 	//bi-directional many-to-one association to TblCashOverCounter
-	@JsonIgnore
 	@OneToMany(mappedBy="tblTransHead2")
 	private List<TblCashOverCounter> tblCashOverCounters2;
 
 	//bi-directional many-to-one association to TblDepositDetail
-	@JsonIgnore
 	@OneToMany(mappedBy="tblTransHead")
 	private List<TblDepositDetail> tblDepositDetails;
 
 	//bi-directional many-to-one association to TblSmsMsgEmail
-	@JsonIgnore
 	@OneToMany(mappedBy="tblTransHead")
 	private List<TblSmsMsgEmail> tblSmsMsgEmails;
 

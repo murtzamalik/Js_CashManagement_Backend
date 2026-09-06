@@ -35,7 +35,7 @@ import java.util.List;
  */
 
 
-@Api(value = "Cash Management Api Non Financial Change Password Post Api", description = "POST NON FIN API Change Password For Cash Management")
+@Api(value = "JS Cash Management Api Non Financial Change Password Post Api", description = "POST NON FIN API Change Password For JS Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/nonFin/changePassword")

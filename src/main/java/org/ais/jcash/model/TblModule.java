@@ -1,7 +1,5 @@
 package org.ais.jcash.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.io.Serializable;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -54,7 +52,6 @@ public class TblModule implements Serializable {
 	private BigDecimal updateindex;
 
 	//bi-directional many-to-one association to TblMenu
-	@JsonIgnore
 	@OneToMany(mappedBy="tblModule")
 	private List<TblMenu> tblMenus;
 

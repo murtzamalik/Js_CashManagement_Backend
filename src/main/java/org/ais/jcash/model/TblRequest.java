@@ -1,7 +1,5 @@
 package org.ais.jcash.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.io.Serializable;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -167,12 +165,10 @@ public class TblRequest implements Serializable {
 	private String voucherno;
 
 	//bi-directional many-to-one association to TblResponse
-	@JsonIgnore
 	@OneToMany(mappedBy="tblRequest")
 	private List<TblResponse> tblResponses;
 
 	//bi-directional many-to-one association to TblTransHead
-	@JsonIgnore
 	@OneToMany(mappedBy="tblRequest")
 	private List<TblTransHead> tblTransHeads;
 

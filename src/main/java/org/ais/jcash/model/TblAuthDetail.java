@@ -1,7 +1,5 @@
 package org.ais.jcash.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.io.Serializable;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -52,7 +50,6 @@ public class TblAuthDetail implements Serializable {
 	private BigDecimal updateindex;
 
 	//bi-directional many-to-one association to LkpUserAuthLevel
-	@JsonIgnore
 	@ManyToOne
 	@JoinColumn(name="USER_AUTH_LEVEL_ID")
 	private LkpUserAuthLevel lkpUserAuthLevel;

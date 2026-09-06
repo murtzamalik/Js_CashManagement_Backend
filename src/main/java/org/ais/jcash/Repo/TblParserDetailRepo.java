@@ -7,6 +7,6 @@ import java.util.List;
 
 public interface TblParserDetailRepo extends JpaRepository<TblParserDetail , Long> {
 
-    List<TblParserDetail> findByTblParserHeadParserHeadIdOrderByParserDetailIdAsc(long parserHeadId);
+    List<TblParserDetail> findByTblParserHeadParserHeadIdOrderBySequenceAsc(long parserHeadId);
 
 }

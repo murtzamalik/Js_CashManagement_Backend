@@ -797,7 +797,7 @@ public class JsCashManagementImpl implements JsCashNonFinService {
         if (tblParserCompanyConfigs != null && tblParserCompanyConfigs.size() > 0) {
             List<TblParserHead> tblParserHeads = new ArrayList<>();
             for (TblParserCompanyConfig tblParserCompanyConfig : tblParserCompanyConfigs) {
-                List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderByParserDetailIdAsc(tblParserCompanyConfig.getTblParserHead().getParserHeadId());
+                List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderBySequenceAsc(tblParserCompanyConfig.getTblParserHead().getParserHeadId());
 //                tblParserCompanyConfig.getTblParserHead().setParserDetails(tblParserDetails);
                 tblParserHeads.add(tblParserCompanyConfig.getTblParserHead());
 
@@ -867,7 +867,7 @@ public class JsCashManagementImpl implements JsCashNonFinService {
     public List<TblParserDetail> getcompanyproductparser(long companyId, long productId) {
         TblParserHead tblParserHead = tblParserHeadRepo.getCompanyProductParser(companyId, productId);
         if (tblParserHead != null) {
-            List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderByParserDetailIdAsc(tblParserHead.getParserHeadId());
+            List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderBySequenceAsc(tblParserHead.getParserHeadId());
             return tblParserDetails;
         } else {
             return null;
@@ -881,7 +881,7 @@ public class JsCashManagementImpl implements JsCashNonFinService {
         if (tblParserHeads != null) {
 
             for (TblParserHead tblParserHead : tblParserHeads) {
-                List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderByParserDetailIdAsc(tblParserHead.getParserHeadId());
+                List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderBySequenceAsc(tblParserHead.getParserHeadId());
 //                tblParserHead.setParserDetails(tblParserDetails);
             }
             return tblParserHeads;
@@ -1063,7 +1063,7 @@ public class JsCashManagementImpl implements JsCashNonFinService {
     public TblParserHead getParserById(String parserHeadId) {
         TblParserHead tblParserHead = tblParserHeadRepo.findById(Long.valueOf(parserHeadId)).orElse(null);
         if (tblParserHead != null) {
-            List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderByParserDetailIdAsc(tblParserHead.getParserHeadId());
+            List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderBySequenceAsc(tblParserHead.getParserHeadId());
 //            tblParserHead.setParserDetails(tblParserDetails);
             return tblParserHead;
 

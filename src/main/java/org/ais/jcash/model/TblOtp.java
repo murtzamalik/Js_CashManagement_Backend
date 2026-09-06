@@ -1,7 +1,5 @@
 package org.ais.jcash.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.io.Serializable;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -65,7 +63,6 @@ public class TblOtp implements Serializable {
 	private LkpOtpType lkpOtpType;
 
 	//bi-directional many-to-one association to TblSmsMsgEmail
-	@JsonIgnore
 	@OneToMany(mappedBy="tblOtp")
 	private List<TblSmsMsgEmail> tblSmsMsgEmails;
 

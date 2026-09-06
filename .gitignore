@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Prefer env-based secrets; keep example configs only in repo where needed
+.env
+*.pem

@@ -1,7 +1,5 @@
 package org.ais.jcash.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.io.Serializable;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -149,12 +147,10 @@ public class TblCompany implements Serializable {
 	private String url;
 
 	//bi-directional many-to-one association to TblAccount
-	@JsonIgnore
 	@OneToMany(mappedBy="tblCompany")
 	private List<TblAccount> tblAccounts;
 
 	//bi-directional many-to-one association to TblAuthMatrixHead
-	@JsonIgnore
 	@OneToMany(mappedBy="tblCompany")
 	private List<TblAuthMatrixHead> tblAuthMatrixHeads;
 
@@ -169,27 +165,22 @@ public class TblCompany implements Serializable {
 	private TblCompanyGroup tblCompanyGroup;
 
 	//bi-directional many-to-one association to TblCompanyProduct
-	@JsonIgnore
 	@OneToMany(mappedBy="tblCompany")
 	private List<TblCompanyProduct> tblCompanyProducts;
 
 	//bi-directional many-to-one association to TblParserCompanyConfig
-	@JsonIgnore
 	@OneToMany(mappedBy="tblCompany")
 	private List<TblParserCompanyConfig> tblParserCompanyConfigs;
 
 	//bi-directional many-to-one association to TblTransHead
-	@JsonIgnore
 	@OneToMany(mappedBy="tblCompany")
 	private List<TblTransHead> tblTransHeads;
 
 	//bi-directional many-to-one association to TblUser
-	@JsonIgnore
 	@OneToMany(mappedBy="tblCompany")
 	private List<TblUser> tblUsers;
 
 	//bi-directional many-to-one association to TblUserAccountProduct
-	@JsonIgnore
 	@OneToMany(mappedBy="tblCompany")
 	private List<TblUserAccountProduct> tblUserAccountProducts;
 
