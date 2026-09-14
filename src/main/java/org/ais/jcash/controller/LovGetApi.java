@@ -718,8 +718,25 @@ public class LovGetApi extends AbstractApi {
             LoggedUserDetail loggedUserDetail = getLoggedUserDataFromHeaderToken(request.getHeader("Authorization"));
             if(loggedUserDetail != null) {
                 List<CustomizedLovAuthCompanyProduct> lovResponses = jsCashLovService.lovAuthCompanyProduct(loggedUserDetail.getUserId());
+                if (lovResponses == null) {
+                    lovResponses = new java.util.ArrayList<>();
+                }
 
-                if (lovResponses != null && lovResponses.size() > 0) {
+                // Mock demo: if user/company has no IBFT product, expose synthetic IBFT product
+                if (t24MockSupport.isMockEnabled()) {
+                    boolean hasIbft = false;
+                    for (CustomizedLovAuthCompanyProduct p : lovResponses) {
+                        if (p != null && p.getProductCode() != null && "IBFT".equalsIgnoreCase(p.getProductCode())) {
+                            hasIbft = true;
+                            break;
+                        }
+                    }
+                    if (!hasIbft) {
+                        lovResponses.add(t24MockSupport.mockIbftProduct());
+                    }
+                }
+
+                if (lovResponses.size() > 0) {
                     LOG.info("\n EXITING THIS METHOD == lovAuthCompanyProduct(); \n\n\n");
                     return getResponseFormat(HttpStatus.OK, "Record Found", lovResponses);
                 } else {

@@ -27,7 +27,9 @@ import javax.validation.Valid;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -74,7 +76,38 @@ public class JsCashPaymentPostApi extends AbstractApi {
                 CustomizedLovAuthCompanyProduct customizedLovAuthCompanyProduct = jsCashNonFinService.getUserAuthProdutsNature(loggedUserDetail.getUserId(),
                         initiateSingleTransactionRequest.getProductId());
 
+                // Mock IBFT product (no company product row) — used for demo when user has no IBFT assignment
+                if (customizedLovAuthCompanyProduct == null
+                        && t24MockSupport.isMockEnabled()
+                        && t24MockSupport.isMockProductId(initiateSingleTransactionRequest.getProductId())) {
+                    customizedLovAuthCompanyProduct = t24MockSupport.mockIbftProduct();
+                }
+
                 if (customizedLovAuthCompanyProduct != null) {
+
+                    // Pure mock IBFT path — skip DB FKs for synthetic product id
+                    if (t24MockSupport.isMockEnabled()
+                            && t24MockSupport.isMockProductId(initiateSingleTransactionRequest.getProductId())
+                            && "IBFT".equalsIgnoreCase(customizedLovAuthCompanyProduct.getProductCode())) {
+                        String fromAcc = String.valueOf(initiateSingleTransactionRequest.getDebitAcctNoId() > 0
+                                ? initiateSingleTransactionRequest.getDebitAcctNoId()
+                                : "1000000001");
+                        String toAcc = initiateSingleTransactionRequest.getBenActNo();
+                        String amount = String.valueOf(initiateSingleTransactionRequest.getTransferAmnt());
+                        String imd = initiateSingleTransactionRequest.getToBankIMD();
+                        if (imd == null || imd.trim().isEmpty()) {
+                            imd = "000000";
+                        }
+                        IBFTTitleFetchResponse ibftPay = wsdlT24IService.IbftPayment(fromAcc, toAcc, imd, amount);
+                        Map<String, Object> data = new LinkedHashMap<>();
+                        data.put("mockMode", true);
+                        data.put("payment", ibftPay);
+                        data.put("accountTitle", initiateSingleTransactionRequest.getAccountTitle());
+                        data.put("iban", toAcc);
+                        data.put("amount", amount);
+                        LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); MOCK IBFT without DB \n\n\n");
+                        return getResponseFormat(HttpStatus.OK, "IBFT Transaction Performed Successfully (MOCK)", data);
+                    }
 
                     TblTransHead tblTransHead = new TblTransHead();
 
@@ -469,6 +502,11 @@ public class JsCashPaymentPostApi extends AbstractApi {
 
             CustomizedLovAuthCompanyProduct product = jsCashNonFinService.getUserAuthProdutsNature(
                     loggedUserDetail.getUserId(), bulkIbftRequest.getProductId());
+            if (product == null
+                    && t24MockSupport.isMockEnabled()
+                    && t24MockSupport.isMockProductId(bulkIbftRequest.getProductId())) {
+                product = t24MockSupport.mockIbftProduct();
+            }
             if (product == null || product.getProductCode() == null || !product.getProductCode().equalsIgnoreCase("IBFT")) {
                 return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Selected product is not an IBFT product", null);
             }
@@ -477,6 +515,8 @@ public class JsCashPaymentPostApi extends AbstractApi {
             int successCount = 0;
             int failCount = 0;
             int rowIndex = 0;
+            boolean pureMockProduct = t24MockSupport.isMockEnabled()
+                    && t24MockSupport.isMockProductId(bulkIbftRequest.getProductId());
 
             for (BulkIbftRowRequest row : bulkIbftRequest.getRows()) {
                 rowIndex++;
@@ -523,6 +563,16 @@ public class JsCashPaymentPostApi extends AbstractApi {
                         rowResult.put("status", "FAILED");
                         rowResult.put("message", "Bank not found");
                         failCount++;
+                        results.add(rowResult);
+                        continue;
+                    }
+
+                    if (pureMockProduct) {
+                        rowResult.put("status", "SUCCESS");
+                        rowResult.put("message", "IBFT processed (MOCK)");
+                        rowResult.put("mockMode", true);
+                        rowResult.put("accountTitle", row.getAccountTitle());
+                        successCount++;
                         results.add(rowResult);
                         continue;
                     }

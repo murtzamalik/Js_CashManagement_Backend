@@ -3,6 +3,7 @@ package org.ais.jcash.WsdlT24Api.service;
 import org.ais.jcash.WsdlT24Api.model.IBFTTitleFetchResponse;
 import org.ais.jcash.WsdlT24Api.model.InternalFundsTransferResponse;
 import org.ais.jcash.WsdlT24Api.model.InternalFundsTransferTitleFetchResponse;
+import org.ais.jcash.dto.CustomizedLovAuthCompanyProduct;
 import org.ais.jcash.dto.LovResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,10 @@ import java.util.Map;
  */
 @Service
 public class T24MockSupport {
+
+    public static final long MOCK_IBFT_PRODUCT_ID = 9000L;
+    /** Demo security device code accepted only when mock mode is ON. */
+    public static final String MOCK_SECURITY_DEVICE_CODE = "1234567";
 
     @Value("${jcash.t24.mock-enabled:true}")
     private boolean mockEnabled;
@@ -44,13 +49,36 @@ public class T24MockSupport {
         return mockFallbackOnError;
     }
 
+    public boolean isMockProductId(Long productId) {
+        return productId != null && productId >= 9000L;
+    }
+
+    public boolean isMockSecurityDeviceCode(String pin) {
+        return MOCK_SECURITY_DEVICE_CODE.equals(pin);
+    }
+
     public Map<String, Object> status() {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("mockEnabled", mockEnabled);
         map.put("mockFallbackOnError", mockFallbackOnError);
         map.put("mode", mockEnabled ? "MOCK" : "LIVE");
         map.put("sampleIbans", IBAN_TITLE_DIRECTORY.keySet());
+        map.put("mockSecurityDeviceCode", mockEnabled ? MOCK_SECURITY_DEVICE_CODE : null);
+        map.put("mockIbftProductId", mockEnabled ? MOCK_IBFT_PRODUCT_ID : null);
         return map;
+    }
+
+    /**
+     * Synthetic IBFT product when the logged-in user has no company IBFT product assigned.
+     */
+    public CustomizedLovAuthCompanyProduct mockIbftProduct() {
+        CustomizedLovAuthCompanyProduct product = new CustomizedLovAuthCompanyProduct();
+        product.setProductId(MOCK_IBFT_PRODUCT_ID);
+        product.setProductCode("IBFT");
+        product.setMasterProductName("IBFT (MOCK Demo Product)");
+        product.setCustAccDr("1000000001");
+        product.setPaymentMode("IBFT");
+        return product;
     }
 
     public IBFTTitleFetchResponse mockIbftTitleFetch(String fromAccount, String toAccount, String toBankIMD, String amount) {

@@ -5,6 +5,7 @@ import io.swagger.annotations.Api;
 import org.ais.jcash.Service.JsCashFinService;
 import org.ais.jcash.Service.JsCashNonFinService;
 import org.ais.jcash.WsdlT24Api.dto.balanceinquiry.Root;
+import org.ais.jcash.WsdlT24Api.service.T24MockSupport;
 import org.ais.jcash.controller.AbstractApi;
 import org.ais.jcash.dto.*;
 import org.ais.jcash.model.*;
@@ -44,6 +45,9 @@ public class JsCashCompanyPostApi extends AbstractApi {
 
     @Autowired
     private JsCashFinService jsCashFinService;
+
+    @Autowired
+    private T24MockSupport t24MockSupport;
 
 
     @RequestMapping(value = "/saveCompanyGroup", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -1136,6 +1140,13 @@ public class JsCashCompanyPostApi extends AbstractApi {
         try {
             LoggedUserDetail loggedUserDetail = getLoggedUserDataFromHeaderToken(request.getHeader("Authorization"));
             if (loggedUserDetail != null) {
+
+                // MOCK demo unlock — accept fixed device code when T24 mock is ON (no OTP row required)
+                if (t24MockSupport.isMockEnabled()
+                        && t24MockSupport.isMockSecurityDeviceCode(securityPinRequest.getSecurityPin())) {
+                    LOG.info("\n EXITING THIS METHOD == verifySecurityDeviceCode(); MOCK device code accepted \n\n\n");
+                    return getResponseFormat(HttpStatus.OK, "OTP Verified Successfully (MOCK)", "Y");
+                }
 
                 TblOtp tblOtp = jsCashNonFinService.verifySecurityDeviceCode(loggedUserDetail.getUserId(), securityPinRequest.getSecurityPin());
 
