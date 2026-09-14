@@ -53,7 +53,7 @@ public class TblParserDetail implements Serializable {
 	@Column(name="MIN_LENGTH")
 	private BigDecimal minLength;
 
-	@Column(name="\"SEQUENCE\"")
+	@Transient
 	private BigDecimal sequence;
 
 	private BigDecimal updateindex;

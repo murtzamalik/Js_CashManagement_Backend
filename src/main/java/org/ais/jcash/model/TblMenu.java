@@ -1,5 +1,7 @@
 package org.ais.jcash.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -72,6 +74,7 @@ public class TblMenu implements Serializable {
 	private TblMenu tblMenu;
 
 	//bi-directional many-to-one association to TblMenu
+	@JsonIgnore
 	@OneToMany(mappedBy="tblMenu")
 	private List<TblMenu> tblMenus;
 
@@ -81,6 +84,7 @@ public class TblMenu implements Serializable {
 	private TblModule tblModule;
 
 	//bi-directional many-to-one association to TblRoleRight
+	@JsonIgnore
 	@OneToMany(mappedBy="tblMenu")
 	private List<TblRoleRight> tblRoleRights;
 

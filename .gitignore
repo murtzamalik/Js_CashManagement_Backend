@@ -32,6 +32,10 @@ build/
 ### VS Code ###
 .vscode/
 
-# Prefer env-based secrets; keep example configs only in repo where needed
+### Docker / secrets ###
 .env
+.env.local
 *.pem
+
+
+.env

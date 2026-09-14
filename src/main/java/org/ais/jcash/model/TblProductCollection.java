@@ -1,5 +1,7 @@
 package org.ais.jcash.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -72,6 +74,7 @@ public class TblProductCollection implements Serializable {
 	private String productNature;
 
 	//bi-directional many-to-one association to TblProduct
+	@JsonIgnore
 	@OneToMany(mappedBy="tblProductCollection")
 	private List<TblProduct> tblProducts;
 

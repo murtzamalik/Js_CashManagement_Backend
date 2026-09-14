@@ -63,6 +63,7 @@ public class LkpProvince implements Serializable {
 	private BigDecimal updateindex;
 
 	//bi-directional many-to-one association to LkpBranch
+	@JsonIgnore
 	@OneToMany(mappedBy="lkpProvince")
 	private List<LkpBranch> lkpBranches;
 

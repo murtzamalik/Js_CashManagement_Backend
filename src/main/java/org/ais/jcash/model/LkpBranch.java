@@ -1,5 +1,7 @@
 package org.ais.jcash.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -105,18 +107,22 @@ public class LkpBranch implements Serializable {
 	private LkpProvince lkpProvince;
 
 	//bi-directional many-to-one association to TblAccount
+	@JsonIgnore
 	@OneToMany(mappedBy="lkpBranch")
 	private List<TblAccount> tblAccounts;
 
 	//bi-directional many-to-one association to TblDepositDetail
+	@JsonIgnore
 	@OneToMany(mappedBy="lkpBranch")
 	private List<TblDepositDetail> tblDepositDetails;
 
 	//bi-directional many-to-one association to TblTransHead
+	@JsonIgnore
 	@OneToMany(mappedBy="lkpBranch")
 	private List<TblTransHead> tblTransHeads;
 
 	//bi-directional many-to-one association to TblUser
+	@JsonIgnore
 	@OneToMany(mappedBy="lkpBranch")
 	private List<TblUser> tblUsers;
 

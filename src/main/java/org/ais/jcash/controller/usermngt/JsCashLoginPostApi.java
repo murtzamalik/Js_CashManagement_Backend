@@ -33,7 +33,7 @@ import java.util.*;
  */
 
 
-@Api(value = "JS Cash Management Api Login Post Api", description = "POST LOGIN  API For JS Cash Management")
+@Api(value = "Cash Management Api Login Post Api", description = "POST LOGIN  API For Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 public class JsCashLoginPostApi extends AbstractApi {
@@ -130,7 +130,7 @@ public class JsCashLoginPostApi extends AbstractApi {
                     loginResponse.setMenu(menus);
                     loginResponse.setTblUser(tblUser);
 
-//                    loginResponse.setSessionTimeOut(""+100*60000);
+                    loginResponse.setSessionTimeOut(""+100*60000);
                     loginResponse.setToken("Bearer " + aeSencryption.encrypt(jwt));
 
                     LOG.info("\n EXITING THIS METHOD == accountLogin(); OF CLASS = JsCashLoginPostApi \n\n\n");

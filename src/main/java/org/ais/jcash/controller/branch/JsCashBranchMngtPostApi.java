@@ -25,7 +25,7 @@ import javax.validation.Valid;
 import java.math.BigDecimal;
 import java.util.HashMap;
 
-@Api(value = "JS Cash Management Api Login Post Api", description = "POST LOGIN  API For JS Cash Management")
+@Api(value = "Cash Management Api Login Post Api", description = "POST LOGIN  API For Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/nonFin")

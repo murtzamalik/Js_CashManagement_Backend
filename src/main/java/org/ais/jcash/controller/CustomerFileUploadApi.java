@@ -33,7 +33,7 @@ import java.util.List;
  */
 
 
-@Api(value = "JS Cash Management File Upload Api ", description = "POST FILE UPLOAD API For JS Cash Management")
+@Api(value = "Cash Management File Upload Api ", description = "POST FILE UPLOAD API For Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/customerFileUpload")

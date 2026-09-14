@@ -27,7 +27,7 @@ import java.util.HashMap;
  */
 
 
-@Api(value = "JS Cash Management Api Non Financial Update Api", description = "Update NON FIN API For JS Cash Management")
+@Api(value = "Cash Management Api Non Financial Update Api", description = "Update NON FIN API For Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/nonFin")

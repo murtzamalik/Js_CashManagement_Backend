@@ -7,6 +7,7 @@ import org.ais.jcash.WsdlT24Api.dto.ifttfresponse.Root;
 import org.ais.jcash.WsdlT24Api.model.*;
 import org.ais.jcash.WsdlT24Api.service.impl.WsdlT24Service;
 import org.ais.jcash.controller.AbstractApi;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -26,12 +27,15 @@ import java.util.*;
 
 @Service
 public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
-    String m_url = "http://20.24.26.237:8080";
+
+    @Value("${jcash.t24.base-url:http://20.24.26.237:8080}")
+    private String t24BaseUrl;
+
     private RestTemplate restTemplate;
 
     @Override
     public InternalFundsTransferTitleFetchResponse IftTitleFetch(String accountNumber) {
-        String url=m_url+"/internalfundtransfertitlefetch";
+        String url=t24BaseUrl+"/internalfundtransfertitlefetch";
         DateTimeFormatter transmissionDateTime = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime lt = LocalDateTime.now();
         // Setting Transmission Date and Time
@@ -91,7 +95,7 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
 
     @Override
     public IBFTTitleFetchResponse IbftTitleFetch(String accountNumber,String toAccount,String toBankIMD,String amount) {
-        String url=m_url+"/ibfttitlefetch";
+        String url=t24BaseUrl+"/ibfttitlefetch";
         DateTimeFormatter transmissionDateTime = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime lt = LocalDateTime.now();
         // Setting Transmission Date and Time
@@ -155,7 +159,7 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
     @Override
 
     public BalanceInquiryResponse balanceinquiry(String accountNumber) {
-        String url=m_url+"/balanceinquiry";
+        String url=t24BaseUrl+"/balanceinquiry";
         DateTimeFormatter transmissionDateTime = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime lt = LocalDateTime.now();
         // Setting Transmission Date and Time
@@ -215,7 +219,7 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
 
     @Override
     public UtilityBillInquiryResponse utilitybillinquiry(UtltyBillInquiry utltyBillInquiry) {
-        String url=m_url+"/billinquiry";
+        String url=t24BaseUrl+"/billinquiry";
         DateTimeFormatter transmissionDateTime = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime lt = LocalDateTime.now();
         // Setting Transmission Date and Time
@@ -281,7 +285,7 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
 
     @Override
     public InternalFundsTransferResponse internalFundsTranfer(String fromAccount,String toAccount, String amount) {
-        String url=m_url+"/internalfundtransferpayment";
+        String url=t24BaseUrl+"/internalfundtransferpayment";
         DateTimeFormatter transmissionDateTime = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime lt = LocalDateTime.now();
         // Setting Transmission Date and Time

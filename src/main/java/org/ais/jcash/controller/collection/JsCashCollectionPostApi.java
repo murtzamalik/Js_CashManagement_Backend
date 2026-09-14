@@ -29,7 +29,7 @@ import java.util.List;
  */
 
 
-@Api(value = "JS Cash Management Collection Post Api", description = "POST COllection API For JS Cash Management")
+@Api(value = "Cash Management Collection Post Api", description = "POST COllection API For Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/fin/collection")

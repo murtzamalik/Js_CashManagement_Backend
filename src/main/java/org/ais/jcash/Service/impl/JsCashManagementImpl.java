@@ -7,6 +7,7 @@ import org.ais.jcash.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -223,25 +224,22 @@ public class JsCashManagementImpl implements JsCashNonFinService {
 
     @Override
     public TblUser saveTblUser(TblUser tblUser) {
-        tblUser = tblUserRepo.save(tblUser);
-        if (tblUser != null && tblUser.getUserId() > 0) {
+        tblUser = tblUserRepo.saveAndFlush(tblUser);
+        if (tblUser == null || tblUser.getUserId() <= 0) {
+            return null;
+        }
+        // roleId on TblUser is @Transient — set only in memory from the API; must load a managed TblRole for the association.
+        long roleId = tblUser.getRoleId();
+        if (roleId > 0) {
+            TblRole tblRole = tblRoleRepo.findById(roleId)
+                    .orElseThrow(() -> new EntityNotFoundException("TblRole not found for roleId=" + roleId));
             TblUserRole tblUserRole = new TblUserRole();
-            TblRole tblRole = new TblRole();
-
-//            tblRole.setRoleId(tblUser.getRoleId());
-
-
             tblUserRole.setTblUser(tblUser);
             tblUserRole.setTblRole(tblRole);
             tblUserRole.setCreateuser(tblUser.getCreateuser());
-
-            tblUserRoleRepo.save(tblUserRole);
-
-            return tblUser;
-
-        } else {
-            return null;
+            tblUserRoleRepo.saveAndFlush(tblUserRole);
         }
+        return tblUser;
     }
 
     @Override
@@ -797,7 +795,7 @@ public class JsCashManagementImpl implements JsCashNonFinService {
         if (tblParserCompanyConfigs != null && tblParserCompanyConfigs.size() > 0) {
             List<TblParserHead> tblParserHeads = new ArrayList<>();
             for (TblParserCompanyConfig tblParserCompanyConfig : tblParserCompanyConfigs) {
-                List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderBySequenceAsc(tblParserCompanyConfig.getTblParserHead().getParserHeadId());
+                List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderByParserDetailIdAsc(tblParserCompanyConfig.getTblParserHead().getParserHeadId());
 //                tblParserCompanyConfig.getTblParserHead().setParserDetails(tblParserDetails);
                 tblParserHeads.add(tblParserCompanyConfig.getTblParserHead());
 
@@ -867,7 +865,7 @@ public class JsCashManagementImpl implements JsCashNonFinService {
     public List<TblParserDetail> getcompanyproductparser(long companyId, long productId) {
         TblParserHead tblParserHead = tblParserHeadRepo.getCompanyProductParser(companyId, productId);
         if (tblParserHead != null) {
-            List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderBySequenceAsc(tblParserHead.getParserHeadId());
+            List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderByParserDetailIdAsc(tblParserHead.getParserHeadId());
             return tblParserDetails;
         } else {
             return null;
@@ -881,7 +879,7 @@ public class JsCashManagementImpl implements JsCashNonFinService {
         if (tblParserHeads != null) {
 
             for (TblParserHead tblParserHead : tblParserHeads) {
-                List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderBySequenceAsc(tblParserHead.getParserHeadId());
+                List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderByParserDetailIdAsc(tblParserHead.getParserHeadId());
 //                tblParserHead.setParserDetails(tblParserDetails);
             }
             return tblParserHeads;
@@ -1063,7 +1061,7 @@ public class JsCashManagementImpl implements JsCashNonFinService {
     public TblParserHead getParserById(String parserHeadId) {
         TblParserHead tblParserHead = tblParserHeadRepo.findById(Long.valueOf(parserHeadId)).orElse(null);
         if (tblParserHead != null) {
-            List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderBySequenceAsc(tblParserHead.getParserHeadId());
+            List<TblParserDetail> tblParserDetails = tblParserDetailRepo.findByTblParserHeadParserHeadIdOrderByParserDetailIdAsc(tblParserHead.getParserHeadId());
 //            tblParserHead.setParserDetails(tblParserDetails);
             return tblParserHead;
 

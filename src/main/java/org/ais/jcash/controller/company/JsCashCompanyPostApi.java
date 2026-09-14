@@ -31,7 +31,7 @@ import java.util.*;
  */
 
 
-@Api(value = "JS Cash Management Api Non Financial Post Api", description = "POST NON FIN API For JS Cash Management")
+@Api(value = "Cash Management Api Non Financial Post Api", description = "POST NON FIN API For Cash Management")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/nonFin")
@@ -412,7 +412,7 @@ public class JsCashCompanyPostApi extends AbstractApi {
 
                 tblUser.setLkpBaseLocation(lkpBaseLocation);
                 tblUser.setTblCompany(tblCompany);
-//                tblUser.setRoleId(saveTblUserRequest.getRoleId());
+               tblUser.setRoleId(saveTblUserRequest.getRoleId());
                 tblUser.setLkpUserType(lkpUserType);
 
                 tblUser = jsCashNonFinService.saveTblUser(tblUser);
