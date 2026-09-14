@@ -33,6 +33,9 @@ public class InitiateSingleTransactionRequest {
 
     private String accountTitle;
 
+    /** IBFT bank IMD (used for title fetch / payment when bank master IMD is unavailable) */
+    private String toBankIMD;
+
     public String getBeneficiaryName() {
         return beneficiaryName;
     }
@@ -151,5 +154,13 @@ public class InitiateSingleTransactionRequest {
 
     public void setAccountTitle(String accountTitle) {
         this.accountTitle = accountTitle;
+    }
+
+    public String getToBankIMD() {
+        return toBankIMD;
+    }
+
+    public void setToBankIMD(String toBankIMD) {
+        this.toBankIMD = toBankIMD;
     }
 }

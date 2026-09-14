@@ -4,6 +4,7 @@ package org.ais.jcash.controller;
 import io.swagger.annotations.Api;
 import org.ais.jcash.Service.JsCashLovService;
 import org.ais.jcash.Service.JsCashNonFinService;
+import org.ais.jcash.WsdlT24Api.service.T24MockSupport;
 import org.ais.jcash.dto.*;
 import org.ais.jcash.model.*;
 import org.ais.jcash.util.JWTSecurity;
@@ -39,6 +40,9 @@ public class LovGetApi extends AbstractApi {
 
     @Autowired
     private JsCashLovService jsCashLovService;
+
+    @Autowired
+    private T24MockSupport t24MockSupport;
 
 
     @RequestMapping(value = "/lovRoleRights", method = RequestMethod.GET)
@@ -309,6 +313,24 @@ public class LovGetApi extends AbstractApi {
             return getResponseFormat(HttpStatus.INTERNAL_SERVER_ERROR, "Critical Error ::" + e.getLocalizedMessage(), null);
         }
 
+    }
+
+    @RequestMapping(value = "/lovIbftBank", method = RequestMethod.GET)
+    public ResponseEntity<HashMap<String, Object>> lovIbftBank(HttpServletRequest request) {
+        try {
+            LOG.info("\n\n\nINSIDE \n CLASS == JsCashLovGetApi \n METHOD == lovIbftBank(); ");
+            List<LovResponse> lovResponses = jsCashLovService.lovIbftBank();
+            if (lovResponses != null && !lovResponses.isEmpty()) {
+                return getResponseFormat(HttpStatus.OK, "Record Found", lovResponses);
+            }
+            if (t24MockSupport.isMockEnabled() || t24MockSupport.isMockFallbackOnError()) {
+                return getResponseFormat(HttpStatus.OK, "Mock IBFT banks (no LKP_BANK IBFT rows)", t24MockSupport.mockIbftBanks());
+            }
+            return getResponseFormat(HttpStatus.OK, "No Record Found", null);
+        } catch (Exception e) {
+            LOG.error("\n CLASS == JsCashLovGetApi \n METHOD == lovIbftBank();  ERROR ----- " + e.getLocalizedMessage());
+            return getResponseFormat(HttpStatus.INTERNAL_SERVER_ERROR, "Critical Error ::" + e.getLocalizedMessage(), null);
+        }
     }
 
     @RequestMapping(value = "/lovBaseLocation", method = RequestMethod.GET)

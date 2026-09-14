@@ -238,6 +238,8 @@ public class JsCashLovServiceImpl implements JsCashLovService {
                 lovResponse.setId(String.valueOf(result.getBankId()));
                 lovResponse.setCode(result.getBankCode());
                 lovResponse.setDescription(result.getBankName());
+                lovResponse.setLongText(result.getBankImd());
+                lovResponse.setShortText(result.getIsIbft());
 
                 lovResponses.add(lovResponse);
             }
@@ -246,6 +248,26 @@ public class JsCashLovServiceImpl implements JsCashLovService {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public List<LovResponse> lovIbftBank() {
+        List<LkpBank> results = lkpBankRepo.findByIsIbftIgnoreCase("Y");
+
+        if (results != null && results.size() > 0) {
+            List<LovResponse> lovResponses = new ArrayList<>();
+            for (LkpBank result : results) {
+                LovResponse lovResponse = new LovResponse();
+                lovResponse.setId(String.valueOf(result.getBankId()));
+                lovResponse.setCode(result.getBankCode());
+                lovResponse.setDescription(result.getBankName());
+                lovResponse.setLongText(result.getBankImd());
+                lovResponse.setShortText(result.getIsIbft());
+                lovResponses.add(lovResponse);
+            }
+            return lovResponses;
+        }
+        return null;
     }
 
     @Override

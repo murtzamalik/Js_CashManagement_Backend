@@ -20,6 +20,8 @@ public interface JsCashLovService {
 
     List<LovResponse> lovBank();
 
+    List<LovResponse> lovIbftBank();
+
     List<LovResponse> lovBaseLocation();
 
     List<LovResponse> lovBranch();

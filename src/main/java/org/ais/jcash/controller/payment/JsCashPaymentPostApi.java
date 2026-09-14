@@ -1,11 +1,14 @@
 package org.ais.jcash.controller.payment;
 
 import io.swagger.annotations.Api;
+import org.ais.jcash.Repo.LkpBankRepo;
 import org.ais.jcash.Service.JsCashFinService;
 import org.ais.jcash.Service.JsCashNonFinService;
 import org.ais.jcash.WsdlT24Api.dto.IftTitleFetchRequest;
+import org.ais.jcash.WsdlT24Api.model.IBFTTitleFetchResponse;
 import org.ais.jcash.WsdlT24Api.model.InternalFundsTransferResponse;
 import org.ais.jcash.WsdlT24Api.model.InternalFundsTransferTitleFetchResponse;
+import org.ais.jcash.WsdlT24Api.service.T24MockSupport;
 import org.ais.jcash.WsdlT24Api.service.WsdlT24IServiceImpl;
 import org.ais.jcash.controller.AbstractApi;
 import org.ais.jcash.dto.*;
@@ -22,8 +25,10 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Created by IntelliJ IDEA.
@@ -50,6 +55,12 @@ public class JsCashPaymentPostApi extends AbstractApi {
 
     @Autowired
     WsdlT24IServiceImpl wsdlT24IService;
+
+    @Autowired
+    private LkpBankRepo lkpBankRepo;
+
+    @Autowired
+    private T24MockSupport t24MockSupport;
 
 
     @RequestMapping(value = "/initiateSingleTransaction", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -91,28 +102,38 @@ public class JsCashPaymentPostApi extends AbstractApi {
                     tblTransHead.setBeneficiaryAccountNo(initiateSingleTransactionRequest.getBenActNo());
                     tblTransHead.setBeneficiaryEmail(initiateSingleTransactionRequest.getBenEmail());
                     tblTransHead.setPaymentModeId(initiateSingleTransactionRequest.getPayModeId() == null?null:BigDecimal.valueOf(initiateSingleTransactionRequest.getPayModeId()));
-                    tblTransHead.setBeneficiaryBankId(initiateSingleTransactionRequest.getBenBankId() == null?null:BigDecimal.valueOf(initiateSingleTransactionRequest.getBenBankId()));
+                    if (initiateSingleTransactionRequest.getBenBankId() != null && initiateSingleTransactionRequest.getBenBankId() < 9000L) {
+                        tblTransHead.setBeneficiaryBankId(BigDecimal.valueOf(initiateSingleTransactionRequest.getBenBankId()));
+                    } else if (initiateSingleTransactionRequest.getBenBankId() != null) {
+                        // Mock bank ids (9000+) — skip FK to LKP_BANK
+                        tblTransHead.setBeneficiaryBankId(null);
+                    } else {
+                        tblTransHead.setBeneficiaryBankId(null);
+                    }
                     tblTransHead.setBeneficiaryAccountTitle(initiateSingleTransactionRequest.getAccountTitle());
 
 
 
+                    // Persist beneficiary mobile on address for IBFT (no dedicated phone column on trans head)
+                    if (initiateSingleTransactionRequest.getMobileNo() != null && !initiateSingleTransactionRequest.getMobileNo().trim().isEmpty()) {
+                        tblTransHead.setBeneficiaryAddress(initiateSingleTransactionRequest.getMobileNo().trim());
+                    }
+
                     tblTransHead = jsCashNonFinService.saveInitiateSinglrTransaction(tblTransHead);
 
+                    if (tblTransHead == null || tblTransHead.getTransHeadId() <= 0) {
+                        LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = initiateSingleTransaction \n\n\n");
+                        return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Internal Error", null);
+                    }
 
-                    if (customizedLovAuthCompanyProduct.getProductCode().equalsIgnoreCase("COC")) {
+                    String productCode = customizedLovAuthCompanyProduct.getProductCode();
+
+                    if (productCode != null && productCode.equalsIgnoreCase("COC")) {
                         //////////////////// CASH OVER COUNTER TRANSACTUION //////////////////////////////
-
-
-
-
-                        if (tblTransHead != null && tblTransHead.getTransHeadId() > 0) {
-
-
                             String xpin = generateRrnNumber();
 
                             TblCashOverCounter tblCashOverCounter = new TblCashOverCounter();
 
-//                            tblCashOverCounter.setTransHeadId1(BigDecimal.valueOf(tblTransHead.getTransHeadId()));
                             tblCashOverCounter.setDocumentNo(initiateSingleTransactionRequest.getDocNo());
                             tblCashOverCounter.setDocumentType(initiateSingleTransactionRequest.getDocType());
                             tblCashOverCounter.setMobileNo(initiateSingleTransactionRequest.getMobileNo());
@@ -134,31 +155,29 @@ public class JsCashPaymentPostApi extends AbstractApi {
                                             TblSmsMsgEmail tblSmsMsgEmail = new TblSmsMsgEmail();
 
                                             tblSmsMsgEmail.setText(xpin);
-//                                            tblSmsMsgEmail.setUserId(BigDecimal.valueOf(loggedUserDetail.getUserId()));
                                             tblSmsMsgEmail.setMessageType("S");
                                             tblSmsMsgEmail.setContactEmail(tblCashOverCounter.getMobileNo());
-//                                            tblSmsMsgEmail.setTransHeadId(BigDecimal.valueOf(tblTransHead.getTransHeadId()));
                                             tblSmsMsgEmail.setSendFlag(new BigDecimal(0));
                                             tblSmsMsgEmail.setCreateuser(BigDecimal.valueOf(loggedUserDetail.getUserId()));
 
                                             tblSmsMsgEmail = jsCashNonFinService.saveInitiateSingleTransactions(tblSmsMsgEmail);
 
-                                            LOG.info("\n EXITING THIS METHOD == branchOnlineDeposit(); OF CLASS = JsCashCollectionPostApi \n\n\n");
+                                            LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = JsCashPaymentPostApi \n\n\n");
                                             return getResponseFormat(HttpStatus.OK, "Transaction Performed Successfully", null);
                                         } else {
 
-                                            LOG.info("\n EXITING THIS METHOD == branchOnlineDeposit(); OF CLASS = JsCashCollectionPostApi \n\n\n");
+                                            LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = JsCashPaymentPostApi \n\n\n");
                                             return getResponseFormat(HttpStatus.OK, "Transaction Parked For Authorization", tblTransHead);
                                         }
 
 
                                     } else {
-                                        LOG.info("\n EXITING THIS METHOD == branchOnlineDeposit(); OF CLASS = JsCashCollectionPostApi \n\n\n");
+                                        LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = JsCashPaymentPostApi \n\n\n");
                                         return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Error On Auth Matrix Proc... \n " + callProcedureSubmitDoc.getStatusDescr(), callProcedureSubmitDoc.getStatusDescr());
 
                                     }
                                 } else {
-                                    LOG.info("\n EXITING THIS METHOD == branchOnlineDeposit(); OF CLASS = JsCashCollectionPostApi \n\n\n");
+                                    LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = JsCashPaymentPostApi \n\n\n");
                                     return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Error While Performing Check On Auth Matrix", "Error While Performing Check On Auth Matrix");
                                 }
 
@@ -169,7 +188,7 @@ public class JsCashPaymentPostApi extends AbstractApi {
                             }
 
 
-                        }  else if (customizedLovAuthCompanyProduct.getProductCode().equalsIgnoreCase("IFT")) {
+                    } else if (productCode != null && productCode.equalsIgnoreCase("IFT")) {
                             //////////////////// INTERNAL FUNDS TRANSFER //////////////////////////////
                             ProcedureSubmitDocResponse callProcedureSubmitDoc = jsCashFinService.callProcedureSubmitDoc(tblTransHead.getTransHeadId(), loggedUserDetail.getUserId());
                             if (callProcedureSubmitDoc != null) {
@@ -177,40 +196,65 @@ public class JsCashPaymentPostApi extends AbstractApi {
                                 if (callProcedureSubmitDoc.getStatus() == 1) {
                                     if (callProcedureSubmitDoc.getAuthComplete().equalsIgnoreCase("Y")) {
 
-//                                        InternalFundsTransferResponse internalFundsTransferResponse=wsdlT24IService.internalFundsTranfer(initiateSingleTransactionRequest.getBenActNo(),String.valueOf(initiateSingleTransactionRequest.getDebitAcctNoId()),String.valueOf(initiateSingleTransactionRequest.getTransferAmnt()));
                                         InternalFundsTransferResponse internalFundsTransferResponse=wsdlT24IService.internalFundsTranfer("0000670111","0000486547","000000020000");
 
-                                        LOG.info("\n EXITING THIS METHOD == branchOnlineDeposit(); OF CLASS = JsCashCollectionPostApi \n\n\n");
+                                        LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = JsCashPaymentPostApi \n\n\n");
                                         return getResponseFormat(HttpStatus.OK, "Transaction Performed Successfully", null);
                                     } else {
 
-                                        LOG.info("\n EXITING THIS METHOD == branchOnlineDeposit(); OF CLASS = JsCashCollectionPostApi \n\n\n");
+                                        LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = JsCashPaymentPostApi \n\n\n");
                                         return getResponseFormat(HttpStatus.OK, "Transaction Parked For Authorization", tblTransHead);
                                     }
 
 
                                 } else {
-                                    LOG.info("\n EXITING THIS METHOD == branchOnlineDeposit(); OF CLASS = JsCashCollectionPostApi \n\n\n");
+                                    LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = JsCashPaymentPostApi \n\n\n");
                                     return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Error On Auth Matrix Proc... \n " + callProcedureSubmitDoc.getStatusDescr(), callProcedureSubmitDoc.getStatusDescr());
 
                                 }
                             } else {
-                                LOG.info("\n EXITING THIS METHOD == branchOnlineDeposit(); OF CLASS = JsCashCollectionPostApi \n\n\n");
+                                LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = JsCashPaymentPostApi \n\n\n");
                                 return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Error While Performing Check On Auth Matrix", "Error While Performing Check On Auth Matrix");
                             }
 
 
 
-                        } else if (customizedLovAuthCompanyProduct.getProductCode().equalsIgnoreCase("IBFT")) {
+                    } else if (productCode != null && productCode.equalsIgnoreCase("IBFT")) {
                             //////////////////// INTER BANK FUNDS TRANSFER //////////////////////////////
-
-                        } else {
-
-                        }
+                            ProcedureSubmitDocResponse callProcedureSubmitDoc = jsCashFinService.callProcedureSubmitDoc(tblTransHead.getTransHeadId(), loggedUserDetail.getUserId());
+                            if (callProcedureSubmitDoc != null) {
+                                if (callProcedureSubmitDoc.getStatus() == 1) {
+                                    if (callProcedureSubmitDoc.getAuthComplete().equalsIgnoreCase("Y")) {
+                                        String fromAcc = String.valueOf(initiateSingleTransactionRequest.getDebitAcctNoId());
+                                        String toAcc = initiateSingleTransactionRequest.getBenActNo();
+                                        String amount = String.valueOf(initiateSingleTransactionRequest.getTransferAmnt());
+                                        String imd = initiateSingleTransactionRequest.getToBankIMD();
+                                        if ((imd == null || imd.trim().isEmpty()) && initiateSingleTransactionRequest.getBenBankId() != null) {
+                                            Optional<LkpBank> bank = lkpBankRepo.findById(initiateSingleTransactionRequest.getBenBankId());
+                                            if (bank.isPresent() && bank.get().getBankImd() != null) {
+                                                imd = bank.get().getBankImd();
+                                            }
+                                        }
+                                        if (imd == null || imd.trim().isEmpty()) {
+                                            imd = "000000";
+                                        }
+                                        IBFTTitleFetchResponse ibftPay = wsdlT24IService.IbftPayment(fromAcc, toAcc, imd, amount);
+                                        LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); IBFT auth complete mock/live pay={} \n\n\n", ibftPay != null);
+                                        return getResponseFormat(HttpStatus.OK, "IBFT Transaction Performed Successfully", ibftPay);
+                                    } else {
+                                        LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); IBFT parked \n\n\n");
+                                        return getResponseFormat(HttpStatus.OK, "IBFT Transaction Parked For Authorization", tblTransHead);
+                                    }
+                                } else {
+                                    return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Error On Auth Matrix Proc... \n " + callProcedureSubmitDoc.getStatusDescr(), callProcedureSubmitDoc.getStatusDescr());
+                                }
+                            } else {
+                                return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Error While Performing Check On Auth Matrix", "Error While Performing Check On Auth Matrix");
+                            }
 
                     } else {
                         LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = initiateSingleTransaction \n\n\n");
-                        return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Internal Error", null);
+                        return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Unsupported product for single transaction: " + productCode, null);
                     }
                 } else {
                     LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = initiateSingleTransaction \n\n\n");
@@ -233,7 +277,6 @@ public class JsCashPaymentPostApi extends AbstractApi {
             LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); OF CLASS = JsCashPaymentPostApi \n\n\n");
             return getResponseFormat(HttpStatus.INTERNAL_SERVER_ERROR, "Critical Error ::" + e.getLocalizedMessage(), null);
         }
-        return null;
     }
 
     @RequestMapping(value = "/verifyCoCXpin", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -371,6 +414,193 @@ public class JsCashPaymentPostApi extends AbstractApi {
             return getResponseFormat(HttpStatus.INTERNAL_SERVER_ERROR, "Critical Error ::" + e.getLocalizedMessage(), null);
         }
 
+    }
+
+    @RequestMapping(value = "/t24MockStatus", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<HashMap<String, Object>> t24MockStatus(HttpServletRequest request) {
+        return getResponseFormat(HttpStatus.OK, "T24 integration status", t24MockSupport.status());
+    }
+
+    @RequestMapping(value = "/initiateIbftTitleFetch", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<HashMap<String, Object>> initiateIbftTitleFetch(@Valid @RequestBody IbftTitleFetchPaymentRequest requestBody, HttpServletRequest request) {
+        LOG.info("\n\n\nINSIDE \n CLASS == JsCashPaymentPostApi \n METHOD == initiateIbftTitleFetch(); ");
+        try {
+            LoggedUserDetail loggedUserDetail = getLoggedUserDataFromHeaderToken(request.getHeader("Authorization"));
+            if (loggedUserDetail == null) {
+                return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "No Logged User Found", "No Logged User Found");
+            }
+
+            IBFTTitleFetchResponse ibftTitleFetchResponse = wsdlT24IService.IbftTitleFetch(
+                    requestBody.getFromAccount(),
+                    requestBody.getToAccount(),
+                    requestBody.getToBankIMD(),
+                    requestBody.getAmount()
+            );
+
+            if (ibftTitleFetchResponse != null && ibftTitleFetchResponse.getToAccountTitle() != null) {
+                HashMap<String, Object> data = new HashMap<>();
+                data.put("fromAccount", ibftTitleFetchResponse.getFromAccount());
+                data.put("toAccount", ibftTitleFetchResponse.getToAccount());
+                data.put("toBankIMD", ibftTitleFetchResponse.getToBankIMD());
+                data.put("amount", ibftTitleFetchResponse.getAmount());
+                data.put("toAccountTitle", ibftTitleFetchResponse.getToAccountTitle());
+                data.put("toBankName", ibftTitleFetchResponse.getToBankName());
+                data.put("toBranchName", ibftTitleFetchResponse.getToBranchName());
+                data.put("mockMode", t24MockSupport.isMockEnabled());
+                return getResponseFormat(HttpStatus.OK, t24MockSupport.isMockEnabled()
+                        ? "IBFT Title Fetched (MOCK)"
+                        : "IBFT Title Fetched Successfully", data);
+            }
+            return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "No IBFT Title Fetched", "No IBFT Title Fetched");
+        } catch (Exception e) {
+            LOG.error("\n CLASS == JsCashPaymentPostApi \n METHOD == initiateIbftTitleFetch();  ERROR ----- " + e.getLocalizedMessage());
+            return getResponseFormat(HttpStatus.INTERNAL_SERVER_ERROR, "Critical Error ::" + e.getLocalizedMessage(), null);
+        }
+    }
+
+    @RequestMapping(value = "/initiateBulkIbft", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<HashMap<String, Object>> initiateBulkIbft(@Valid @RequestBody BulkIbftRequest bulkIbftRequest, HttpServletRequest request) {
+        LOG.info("\n\n\nINSIDE \n CLASS == JsCashPaymentPostApi \n METHOD == initiateBulkIbft(); ");
+        try {
+            LoggedUserDetail loggedUserDetail = getLoggedUserDataFromHeaderToken(request.getHeader("Authorization"));
+            if (loggedUserDetail == null) {
+                return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "No Logged User Found", "No Logged User Found");
+            }
+
+            CustomizedLovAuthCompanyProduct product = jsCashNonFinService.getUserAuthProdutsNature(
+                    loggedUserDetail.getUserId(), bulkIbftRequest.getProductId());
+            if (product == null || product.getProductCode() == null || !product.getProductCode().equalsIgnoreCase("IBFT")) {
+                return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Selected product is not an IBFT product", null);
+            }
+
+            List<HashMap<String, Object>> results = new ArrayList<>();
+            int successCount = 0;
+            int failCount = 0;
+            int rowIndex = 0;
+
+            for (BulkIbftRowRequest row : bulkIbftRequest.getRows()) {
+                rowIndex++;
+                HashMap<String, Object> rowResult = new HashMap<>();
+                rowResult.put("row", rowIndex);
+                rowResult.put("iban", row.getIban());
+
+                try {
+                    if (row.getIban() == null || row.getIban().trim().isEmpty()) {
+                        rowResult.put("status", "FAILED");
+                        rowResult.put("message", "IBAN is required");
+                        failCount++;
+                        results.add(rowResult);
+                        continue;
+                    }
+                    if (row.getTransferAmnt() <= 0) {
+                        rowResult.put("status", "FAILED");
+                        rowResult.put("message", "Amount must be greater than zero");
+                        failCount++;
+                        results.add(rowResult);
+                        continue;
+                    }
+
+                    Long bankId = row.getBenBankId();
+                    if (bankId == null && row.getBankName() != null && !row.getBankName().trim().isEmpty()) {
+                        Optional<LkpBank> bank = lkpBankRepo.findFirstByBankNameIgnoreCase(row.getBankName().trim());
+                        if (bank.isPresent()) {
+                            bankId = bank.get().getBankId();
+                        }
+                    }
+                    // Mock bank catalogue uses ids >= 9000 (no LKP_BANK row)
+                    boolean mockBank = bankId != null && bankId >= 9000L;
+                    if (bankId == null && (row.getBankName() == null || row.getBankName().trim().isEmpty())) {
+                        rowResult.put("status", "FAILED");
+                        rowResult.put("message", "Bank not found");
+                        failCount++;
+                        results.add(rowResult);
+                        continue;
+                    }
+                    if (bankId == null && t24MockSupport.isMockEnabled()) {
+                        mockBank = true;
+                    }
+                    if (bankId == null && !t24MockSupport.isMockEnabled()) {
+                        rowResult.put("status", "FAILED");
+                        rowResult.put("message", "Bank not found");
+                        failCount++;
+                        results.add(rowResult);
+                        continue;
+                    }
+
+                    TblTransHead tblTransHead = new TblTransHead();
+                    TblCompany tblCompany = new TblCompany();
+                    TblAccount tblAccount = new TblAccount();
+                    TblProduct tblProduct = new TblProduct();
+
+                    tblCompany.setCompanyId(loggedUserDetail.getCompanyId());
+                    tblAccount.setAccountId(bulkIbftRequest.getDebitAcctNoId());
+                    tblProduct.setProductId(bulkIbftRequest.getProductId());
+
+                    tblTransHead.setTblAccount2(tblAccount);
+                    tblTransHead.setTblCompany(tblCompany);
+                    tblTransHead.setTblProduct(tblProduct);
+                    tblTransHead.setTransAmount(BigDecimal.valueOf(row.getTransferAmnt()));
+                    tblTransHead.setSecurityDeviceCode(bulkIbftRequest.getSecurityDeviceCode());
+                    String custRef = row.getCustRef();
+                    if (custRef == null || custRef.trim().isEmpty()) {
+                        custRef = (bulkIbftRequest.getBatchRef() == null ? "IBFT-BULK" : bulkIbftRequest.getBatchRef()) + "-" + rowIndex;
+                    }
+                    tblTransHead.setCustomerReference(custRef);
+                    tblTransHead.setCreateuser(BigDecimal.valueOf(loggedUserDetail.getUserId()));
+                    tblTransHead.setBeneficiaryAccountNo(row.getIban().trim().replaceAll("\\s+", "").toUpperCase());
+                    if (!mockBank && bankId != null) {
+                        tblTransHead.setBeneficiaryBankId(BigDecimal.valueOf(bankId));
+                    }
+                    tblTransHead.setBeneficiaryAccountTitle(row.getAccountTitle());
+                    tblTransHead.setBeneficiaryName(row.getAccountTitle());
+                    if (row.getMobileNo() != null) {
+                        tblTransHead.setBeneficiaryAddress(row.getMobileNo().trim());
+                    }
+
+                    tblTransHead = jsCashNonFinService.saveInitiateSinglrTransaction(tblTransHead);
+                    if (tblTransHead == null || tblTransHead.getTransHeadId() <= 0) {
+                        rowResult.put("status", "FAILED");
+                        rowResult.put("message", "Failed to save transaction");
+                        failCount++;
+                        results.add(rowResult);
+                        continue;
+                    }
+
+                    ProcedureSubmitDocResponse submitDoc = jsCashFinService.callProcedureSubmitDoc(
+                            tblTransHead.getTransHeadId(), loggedUserDetail.getUserId());
+                    if (submitDoc != null && submitDoc.getStatus() == 1) {
+                        rowResult.put("status", "SUCCESS");
+                        rowResult.put("transHeadId", tblTransHead.getTransHeadId());
+                        rowResult.put("message", "Y".equalsIgnoreCase(submitDoc.getAuthComplete())
+                                ? "IBFT processed"
+                                : "Parked for authorization");
+                        successCount++;
+                    } else {
+                        rowResult.put("status", "FAILED");
+                        rowResult.put("message", submitDoc == null ? "Auth matrix error" : submitDoc.getStatusDescr());
+                        failCount++;
+                    }
+                    results.add(rowResult);
+                } catch (Exception rowEx) {
+                    rowResult.put("status", "FAILED");
+                    rowResult.put("message", rowEx.getLocalizedMessage());
+                    failCount++;
+                    results.add(rowResult);
+                }
+            }
+
+            HashMap<String, Object> summary = new HashMap<>();
+            summary.put("successCount", successCount);
+            summary.put("failCount", failCount);
+            summary.put("rows", results);
+
+            return getResponseFormat(HttpStatus.OK,
+                    "Bulk IBFT completed. Success: " + successCount + ", Failed: " + failCount,
+                    summary);
+        } catch (Exception e) {
+            LOG.error("\n CLASS == JsCashPaymentPostApi \n METHOD == initiateBulkIbft();  ERROR ----- " + e.getLocalizedMessage());
+            return getResponseFormat(HttpStatus.INTERNAL_SERVER_ERROR, "Critical Error ::" + e.getLocalizedMessage(), null);
+        }
     }
 
     @RequestMapping(value = "/initiateSingleTransactionTitleFetch", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)

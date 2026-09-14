@@ -12,6 +12,7 @@ public interface WsdlT24Service {
 
     InternalFundsTransferTitleFetchResponse IftTitleFetch(String accountNumber);
     IBFTTitleFetchResponse IbftTitleFetch(String fromAccount,String toAccount,String toBankIMD,String amount);
+    IBFTTitleFetchResponse IbftPayment(String fromAccount, String toAccount, String toBankIMD, String amount);
     BalanceInquiryResponse balanceinquiry(String accountNumber);
     UtilityBillInquiryResponse utilitybillinquiry(UtltyBillInquiry utltyBillInquiry);
     InternalFundsTransferResponse internalFundsTranfer(String fromAccount,String toAccount, String amount );

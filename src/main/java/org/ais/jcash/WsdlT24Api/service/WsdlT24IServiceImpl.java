@@ -2,15 +2,16 @@ package org.ais.jcash.WsdlT24Api.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ais.jcash.WsdlT24Api.dto.*;
-import org.ais.jcash.WsdlT24Api.dto.ifttfresponse.Data;
 import org.ais.jcash.WsdlT24Api.dto.ifttfresponse.Root;
 import org.ais.jcash.WsdlT24Api.model.*;
 import org.ais.jcash.WsdlT24Api.service.impl.WsdlT24Service;
 import org.ais.jcash.controller.AbstractApi;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -28,22 +29,28 @@ import java.util.*;
 @Service
 public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
 
+    private static final Logger LOG = LoggerFactory.getLogger(WsdlT24IServiceImpl.class);
+
     @Value("${jcash.t24.base-url:http://20.24.26.237:8080}")
     private String t24BaseUrl;
 
-    private RestTemplate restTemplate;
+    @Autowired
+    private T24MockSupport t24MockSupport;
 
     @Override
     public InternalFundsTransferTitleFetchResponse IftTitleFetch(String accountNumber) {
-        String url=t24BaseUrl+"/internalfundtransfertitlefetch";
+        if (t24MockSupport.isMockEnabled()) {
+            LOG.info("T24 MOCK mode — IftTitleFetch for {}", accountNumber);
+            return t24MockSupport.mockIftTitleFetch(accountNumber);
+        }
+
+        String url = t24BaseUrl + "/internalfundtransfertitlefetch";
         DateTimeFormatter transmissionDateTime = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime lt = LocalDateTime.now();
-        // Setting Transmission Date and Time
         String tdt = transmissionDateTime.format(lt);
-        // Setting Stan
-        String stan=generateRrnNumber();
+        String stan = generateRrnNumber();
 
-        XmlHeaderInput xmlHeaderInput=new XmlHeaderInput();
+        XmlHeaderInput xmlHeaderInput = new XmlHeaderInput();
         xmlHeaderInput.setMerchantID("0096");
         xmlHeaderInput.setTransmissionDateTime(tdt);
         xmlHeaderInput.setStan(stan);
@@ -58,51 +65,49 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
         xmlHeaderInput.setCardAcceptorNameLocation("JSBANK                   CMS          PK");
         xmlHeaderInput.setTargetHost("any");
 
-        InternalFundsTransferTitleFetchRequest internalFundsTransferTitleFetchRequest=new InternalFundsTransferTitleFetchRequest();
-        HttpHeaders header = new HttpHeaders();
-        header.setContentType(MediaType.APPLICATION_JSON);
+        InternalFundsTransferTitleFetchRequest internalFundsTransferTitleFetchRequest = new InternalFundsTransferTitleFetchRequest();
         internalFundsTransferTitleFetchRequest.setAccountNumber(accountNumber);
         HashMap<String, Object> paramMap = new HashMap<>();
-
         HashMap<String, Object> headerMap = new HashMap<>();
-        headerMap.put("Content-Type","application/json");
+        headerMap.put("Content-Type", "application/json");
         paramMap.put("xmlHeaderlnput", xmlHeaderInput);
         paramMap.put("internalFundsTransferTitleFetchRequest", internalFundsTransferTitleFetchRequest);
 
-        Root r = new Root();
-        InternalFundsTransferTitleFetchResponse internalFundsTransferTitleFetchResponse=new InternalFundsTransferTitleFetchResponse();
         String x = getResponseFromPostAPI(headerMap, paramMap, url);
         try {
             ObjectMapper mapper = new ObjectMapper();
-            r = mapper.readValue(x, Root.class);
-            if(r.getResponsecode()==1) {
-                internalFundsTransferTitleFetchResponse.setAccountNumber(r.getData().getAccountNo());
-                internalFundsTransferTitleFetchResponse.setAccountTitle(r.getData().getAccountTitle());
-                internalFundsTransferTitleFetchResponse.setBranchName(r.getData().getBranchName());
-                internalFundsTransferTitleFetchResponse.setResponseCode(String.valueOf(r.getResponsecode()));
+            Root r = mapper.readValue(x, Root.class);
+            if (r.getResponsecode() == 1) {
+                InternalFundsTransferTitleFetchResponse response = new InternalFundsTransferTitleFetchResponse();
+                response.setAccountNumber(r.getData().getAccountNo());
+                response.setAccountTitle(r.getData().getAccountTitle());
+                response.setBranchName(r.getData().getBranchName());
+                response.setResponseCode(String.valueOf(r.getResponsecode()));
+                return response;
             }
-            else{
-                return null;
-            }
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            LOG.warn("IftTitleFetch live call failed: {}", e.getMessage());
         }
-        return internalFundsTransferTitleFetchResponse;
-
+        if (t24MockSupport.isMockFallbackOnError()) {
+            LOG.info("T24 MOCK fallback — IftTitleFetch for {}", accountNumber);
+            return t24MockSupport.mockIftTitleFetch(accountNumber);
+        }
+        return null;
     }
 
-
-
     @Override
-    public IBFTTitleFetchResponse IbftTitleFetch(String accountNumber,String toAccount,String toBankIMD,String amount) {
-        String url=t24BaseUrl+"/ibfttitlefetch";
+    public IBFTTitleFetchResponse IbftTitleFetch(String accountNumber, String toAccount, String toBankIMD, String amount) {
+        if (t24MockSupport.isMockEnabled()) {
+            LOG.info("T24 MOCK mode — IbftTitleFetch toAccount={}", toAccount);
+            return t24MockSupport.mockIbftTitleFetch(accountNumber, toAccount, toBankIMD, amount);
+        }
+
+        String url = t24BaseUrl + "/ibfttitlefetch";
         DateTimeFormatter transmissionDateTime = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime lt = LocalDateTime.now();
-        // Setting Transmission Date and Time
         String tdt = transmissionDateTime.format(lt);
-        // Setting Stan
-        String stan=generateRrnNumber();
-        XmlHeaderInput xmlHeaderInput=new XmlHeaderInput();
+        String stan = generateRrnNumber();
+        XmlHeaderInput xmlHeaderInput = new XmlHeaderInput();
         xmlHeaderInput.setMerchantID("0098");
         xmlHeaderInput.setTransmissionDateTime(tdt);
         xmlHeaderInput.setStan(stan);
@@ -117,26 +122,24 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
         xmlHeaderInput.setCardAcceptorNameLocation("JSBANK                   CMS          PK");
         xmlHeaderInput.setTargetHost("any");
 
-        HttpHeaders header = new HttpHeaders();
-        header.setContentType(MediaType.APPLICATION_JSON);
-        IBFTTitleFetchRequest ibftTitleFetchRequest=new IBFTTitleFetchRequest();
+        IBFTTitleFetchRequest ibftTitleFetchRequest = new IBFTTitleFetchRequest();
         ibftTitleFetchRequest.setFromAccount(accountNumber);
         ibftTitleFetchRequest.setAmount(amount);
         ibftTitleFetchRequest.setToAccount(toAccount);
         ibftTitleFetchRequest.setToBankIMD(toBankIMD);
         HashMap<String, Object> paramMap = new HashMap<>();
         HashMap<String, Object> headerMap = new HashMap<>();
-        headerMap.put("Content-Type","application/json");
+        headerMap.put("Content-Type", "application/json");
         paramMap.put("xmlHeaderlnput", xmlHeaderInput);
         paramMap.put("ibftTitleFetchRequest", ibftTitleFetchRequest);
 
-        org.ais.jcash.WsdlT24Api.dto.ibfttitlefetchresponse.Root r;
-        IBFTTitleFetchResponse ibftTitleFetchResponse=new IBFTTitleFetchResponse();
         String x = getResponseFromPostAPI(headerMap, paramMap, url);
         try {
             ObjectMapper mapper = new ObjectMapper();
-            r = mapper.readValue(x, org.ais.jcash.WsdlT24Api.dto.ibfttitlefetchresponse.Root .class);
-            if(r.getResponsecode()==1) {
+            org.ais.jcash.WsdlT24Api.dto.ibfttitlefetchresponse.Root r =
+                    mapper.readValue(x, org.ais.jcash.WsdlT24Api.dto.ibfttitlefetchresponse.Root.class);
+            if (r.getResponsecode() == 1) {
+                IBFTTitleFetchResponse ibftTitleFetchResponse = new IBFTTitleFetchResponse();
                 ibftTitleFetchResponse.setAmount(r.getData().getAmount());
                 ibftTitleFetchResponse.setFromAccount(r.getData().getFromAccount());
                 ibftTitleFetchResponse.setToAccount(r.getData().getToAccount());
@@ -144,29 +147,101 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
                 ibftTitleFetchResponse.setToBankIMD(r.getData().getToBankIMD());
                 ibftTitleFetchResponse.setToBankName(r.getData().getToBankName());
                 ibftTitleFetchResponse.setToBranchName(r.getData().getToBranchName());
-
+                return ibftTitleFetchResponse;
             }
-            else{
-                return null;
-            }
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            LOG.warn("IbftTitleFetch live call failed: {}", e.getMessage());
         }
-        return ibftTitleFetchResponse;
-
+        if (t24MockSupport.isMockFallbackOnError()) {
+            LOG.info("T24 MOCK fallback — IbftTitleFetch toAccount={}", toAccount);
+            return t24MockSupport.mockIbftTitleFetch(accountNumber, toAccount, toBankIMD, amount);
+        }
+        return null;
     }
 
     @Override
+    public IBFTTitleFetchResponse IbftPayment(String fromAccount, String toAccount, String toBankIMD, String amount) {
+        if (t24MockSupport.isMockEnabled()) {
+            LOG.info("T24 MOCK mode — IbftPayment toAccount={}", toAccount);
+            return t24MockSupport.mockIbftTitleFetch(fromAccount, toAccount, toBankIMD, amount);
+        }
 
+        String url = t24BaseUrl + "/ibftpayment";
+        DateTimeFormatter transmissionDateTime = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        String tdt = transmissionDateTime.format(LocalDateTime.now());
+        String stan = generateRrnNumber();
+
+        XmlHeaderInput xmlHeaderInput = new XmlHeaderInput();
+        xmlHeaderInput.setMerchantID("0098");
+        xmlHeaderInput.setTransmissionDateTime(tdt);
+        xmlHeaderInput.setStan(stan);
+        xmlHeaderInput.setCustomerIDType("ACCOUNT");
+        xmlHeaderInput.setCustomerID(fromAccount);
+        xmlHeaderInput.setPinBlockType("TIN");
+        xmlHeaderInput.setPinBlock("D9115529E922468E");
+        xmlHeaderInput.setMerchantType("0098");
+        xmlHeaderInput.setTransactionDescription("IBFTPAY-MB." + tdt + stan);
+        xmlHeaderInput.setProcCode("40");
+        xmlHeaderInput.setTransactionFee("60");
+        xmlHeaderInput.setCardAcceptorNameLocation("JSBANK                   CMS          PK");
+        xmlHeaderInput.setTargetHost("any");
+
+        IBFTTitleFetchRequest req = new IBFTTitleFetchRequest();
+        req.setFromAccount(fromAccount);
+        req.setToAccount(toAccount);
+        req.setToBankIMD(toBankIMD);
+        req.setAmount(amount);
+
+        HashMap<String, Object> paramMap = new HashMap<>();
+        HashMap<String, Object> headerMap = new HashMap<>();
+        headerMap.put("Content-Type", "application/json");
+        paramMap.put("xmlHeaderlnput", xmlHeaderInput);
+        paramMap.put("ibftPaymentRequest", req);
+
+        String x = getResponseFromPostAPI(headerMap, paramMap, url);
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            org.ais.jcash.WsdlT24Api.dto.ibfttitlefetchresponse.Root r =
+                    mapper.readValue(x, org.ais.jcash.WsdlT24Api.dto.ibfttitlefetchresponse.Root.class);
+            if (r.getResponsecode() == 1) {
+                IBFTTitleFetchResponse response = new IBFTTitleFetchResponse();
+                response.setFromAccount(r.getData().getFromAccount());
+                response.setToAccount(r.getData().getToAccount());
+                response.setAmount(r.getData().getAmount());
+                response.setToBankIMD(r.getData().getToBankIMD());
+                response.setToAccountTitle(r.getData().getToAccountTitle());
+                response.setToBankName(r.getData().getToBankName());
+                response.setToBranchName(r.getData().getToBranchName());
+                return response;
+            }
+        } catch (Exception e) {
+            LOG.warn("IbftPayment live call failed: {}", e.getMessage());
+        }
+        if (t24MockSupport.isMockFallbackOnError()) {
+            return t24MockSupport.mockIbftTitleFetch(fromAccount, toAccount, toBankIMD, amount);
+        }
+        return null;
+    }
+
+    @Override
     public BalanceInquiryResponse balanceinquiry(String accountNumber) {
-        String url=t24BaseUrl+"/balanceinquiry";
+        if (t24MockSupport.isMockEnabled()) {
+            BalanceInquiryResponse mock = new BalanceInquiryResponse();
+            mock.setAccountNumber(accountNumber);
+            mock.setAccountStatus("ACTIVE");
+            mock.setAccountType("CURRENT");
+            mock.setLedgerBalance("100000.00");
+            mock.setWorkingBalance("99500.00");
+            mock.setAccountCurrency("PKR");
+            return mock;
+        }
+
+        String url = t24BaseUrl + "/balanceinquiry";
         DateTimeFormatter transmissionDateTime = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime lt = LocalDateTime.now();
-        // Setting Transmission Date and Time
         String tdt = transmissionDateTime.format(lt);
-        // Setting Stan
-        String stan=generateRrnNumber();
-        XmlHeaderInput xmlHeaderInput=new XmlHeaderInput();
+        String stan = generateRrnNumber();
+        XmlHeaderInput xmlHeaderInput = new XmlHeaderInput();
         xmlHeaderInput.setMerchantID("0096");
         xmlHeaderInput.setTransmissionDateTime(tdt);
         xmlHeaderInput.setStan(stan);
@@ -181,51 +256,52 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
         xmlHeaderInput.setCardAcceptorNameLocation("JSBANK                   CMS          PK");
         xmlHeaderInput.setTargetHost("any");
 
-        HttpHeaders header = new HttpHeaders();
-        header.setContentType(MediaType.APPLICATION_JSON);
-
         HashMap<String, Object> paramMap = new HashMap<>();
-
         HashMap<String, Object> headerMap = new HashMap<>();
-        BalanceInquiryRequest balanceInquiryRequest=new BalanceInquiryRequest();
+        BalanceInquiryRequest balanceInquiryRequest = new BalanceInquiryRequest();
         balanceInquiryRequest.setAccountNumber(accountNumber);
-        headerMap.put("Content-Type","application/json");
+        headerMap.put("Content-Type", "application/json");
         paramMap.put("xmlHeaderlnput", xmlHeaderInput);
         paramMap.put("balanceInquiryRequest", balanceInquiryRequest);
 
-        org.ais.jcash.WsdlT24Api.dto.balanceinquiry.Root  r;
-        BalanceInquiryResponse balanceInquiryResponse=new BalanceInquiryResponse();
         String x = getResponseFromPostAPI(headerMap, paramMap, url);
         try {
             ObjectMapper mapper = new ObjectMapper();
-            r = mapper.readValue(x, org.ais.jcash.WsdlT24Api.dto.balanceinquiry.Root  .class);
-            if(r.getResponsecode()==1) {
+            org.ais.jcash.WsdlT24Api.dto.balanceinquiry.Root r =
+                    mapper.readValue(x, org.ais.jcash.WsdlT24Api.dto.balanceinquiry.Root.class);
+            if (r.getResponsecode() == 1) {
+                BalanceInquiryResponse balanceInquiryResponse = new BalanceInquiryResponse();
                 balanceInquiryResponse.setAccountCurrency(r.getData().getAccountCurrency());
                 balanceInquiryResponse.setAccountNumber(r.getData().getAccountNo());
                 balanceInquiryResponse.setAccountStatus(r.getData().getAccountStatus());
                 balanceInquiryResponse.setAccountType(r.getData().getAccountType());
                 balanceInquiryResponse.setLedgerBalance(r.getData().getLedgerBalance());
                 balanceInquiryResponse.setWorkingBalance(r.getData().getWorkingBalance());
-
+                return balanceInquiryResponse;
             }
-            else{
-                return null;
-            }
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            LOG.warn("balanceinquiry live call failed: {}", e.getMessage());
         }
-        return balanceInquiryResponse;
+        if (t24MockSupport.isMockFallbackOnError()) {
+            BalanceInquiryResponse mock = new BalanceInquiryResponse();
+            mock.setAccountNumber(accountNumber);
+            mock.setAccountStatus("ACTIVE");
+            mock.setAccountType("CURRENT");
+            mock.setLedgerBalance("100000.00");
+            mock.setWorkingBalance("99500.00");
+            mock.setAccountCurrency("PKR");
+            return mock;
+        }
+        return null;
     }
 
     @Override
     public UtilityBillInquiryResponse utilitybillinquiry(UtltyBillInquiry utltyBillInquiry) {
-        String url=t24BaseUrl+"/billinquiry";
+        String url = t24BaseUrl + "/billinquiry";
         DateTimeFormatter transmissionDateTime = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime lt = LocalDateTime.now();
-        // Setting Transmission Date and Time
         String tdt = transmissionDateTime.format(lt);
-        // Setting Stan
-        String stan=generateRrnNumber();
+        String stan = generateRrnNumber();
 
         utltyBillInquiry.getXmlHeaderInput().setMerchantID("0098");
         utltyBillInquiry.getXmlHeaderInput().setTransmissionDateTime(tdt);
@@ -240,29 +316,23 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
         utltyBillInquiry.getXmlHeaderInput().setCardAcceptorNameLocation("JS BANK MOBILE BANKINGPK");
         utltyBillInquiry.getXmlHeaderInput().setTargetHost("any");
 
-        HttpHeaders header = new HttpHeaders();
-        header.setContentType(MediaType.APPLICATION_JSON);
-
         HashMap<String, Object> paramMap = new HashMap<>();
-
         HashMap<String, Object> headerMap = new HashMap<>();
-        headerMap.put("Content-Type","application/json");
-
+        headerMap.put("Content-Type", "application/json");
         paramMap.put("xmlHeaderlnput", utltyBillInquiry.getXmlHeaderInput());
         paramMap.put("utilityBillInquiryRequest", utltyBillInquiry.getUtilityBillInquiryRequest());
 
-        org.ais.jcash.WsdlT24Api.dto.utilitybillinquiry.Root  r;
-        UtilityBillInquiryResponse utilityBillInquiryResponse=new UtilityBillInquiryResponse();
+        UtilityBillInquiryResponse utilityBillInquiryResponse = new UtilityBillInquiryResponse();
         String x = getResponseFromPostAPI(headerMap, paramMap, url);
         try {
             ObjectMapper mapper = new ObjectMapper();
-            r = mapper.readValue(x, org.ais.jcash.WsdlT24Api.dto.utilitybillinquiry.Root   .class);
-            if(r.getResponsecode()==1) {
+            org.ais.jcash.WsdlT24Api.dto.utilitybillinquiry.Root r =
+                    mapper.readValue(x, org.ais.jcash.WsdlT24Api.dto.utilitybillinquiry.Root.class);
+            if (r.getResponsecode() == 1) {
                 utilityBillInquiryResponse.setBillingMonth(r.getData().getBillingMonth());
                 utilityBillInquiryResponse.setBillStatus(r.getData().getBillStatus());
                 utilityBillInquiryResponse.setFromAccount(r.getData().getFromAccount());
                 utilityBillInquiryResponse.setNetCED(r.getData().getNetCED());
-
                 utilityBillInquiryResponse.setPaymentDueDate(r.getData().getPaymentDueDate());
                 utilityBillInquiryResponse.setSubscriberNameOrConnectionType(r.getData().getSubcriberNameorConnectionType());
                 utilityBillInquiryResponse.setTotalAmountPayableAfterDueDate(r.getData().getTotalAmountPayableAfterDueDate());
@@ -270,13 +340,10 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
                 utilityBillInquiryResponse.setUtilityCompanyCode(r.getData().getUtilityCompanyCode());
                 utilityBillInquiryResponse.setUtilityConsumerNumber(r.getData().getUtilityConsumerNumber());
                 utilityBillInquiryResponse.setNetWithholdingTax(r.getData().getNetWithHoldingTax());
-
-
-            }
-            else{
+            } else {
                 return null;
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             System.out.println(e.getMessage());
         }
 
@@ -284,15 +351,18 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
     }
 
     @Override
-    public InternalFundsTransferResponse internalFundsTranfer(String fromAccount,String toAccount, String amount) {
-        String url=t24BaseUrl+"/internalfundtransferpayment";
+    public InternalFundsTransferResponse internalFundsTranfer(String fromAccount, String toAccount, String amount) {
+        if (t24MockSupport.isMockEnabled()) {
+            LOG.info("T24 MOCK mode — internalFundsTranfer");
+            return t24MockSupport.mockInternalFundsTransfer(fromAccount, toAccount, amount);
+        }
+
+        String url = t24BaseUrl + "/internalfundtransferpayment";
         DateTimeFormatter transmissionDateTime = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime lt = LocalDateTime.now();
-        // Setting Transmission Date and Time
         String tdt = transmissionDateTime.format(lt);
-        // Setting Stan
-        String stan=generateRrnNumber();
-        XmlHeaderInput xmlHeaderInput=new XmlHeaderInput();
+        String stan = generateRrnNumber();
+        XmlHeaderInput xmlHeaderInput = new XmlHeaderInput();
         xmlHeaderInput.setMerchantID("0098");
         xmlHeaderInput.setTransmissionDateTime(tdt);
         xmlHeaderInput.setStan(stan);
@@ -307,47 +377,42 @@ public class WsdlT24IServiceImpl extends AbstractApi implements WsdlT24Service {
         xmlHeaderInput.setCardAcceptorNameLocation("JS BANK MOBILE BANKINGPK");
         xmlHeaderInput.setTargetHost("any");
 
-        HttpHeaders header = new HttpHeaders();
-        header.setContentType(MediaType.APPLICATION_JSON);
-
         HashMap<String, Object> paramMap = new HashMap<>();
-
         HashMap<String, Object> headerMap = new HashMap<>();
-        headerMap.put("Content-Type","application/json");
-        InternalFundsTransferRequest internalFundsTransferRequest=new InternalFundsTransferRequest();
+        headerMap.put("Content-Type", "application/json");
+        InternalFundsTransferRequest internalFundsTransferRequest = new InternalFundsTransferRequest();
         internalFundsTransferRequest.setFromAccount(fromAccount);
         internalFundsTransferRequest.setToAccount(toAccount);
         internalFundsTransferRequest.setAmount(amount);
-        InternalFundsTransferTitleFetchRequest internalFundsTransferTitleFetchRequest=new InternalFundsTransferTitleFetchRequest();
+        InternalFundsTransferTitleFetchRequest internalFundsTransferTitleFetchRequest = new InternalFundsTransferTitleFetchRequest();
         internalFundsTransferTitleFetchRequest.setAccountNumber(fromAccount);
         paramMap.put("xmlHeaderlnput", xmlHeaderInput);
         paramMap.put("internalFundsTransferRequest", internalFundsTransferRequest);
         paramMap.put("internalFundsTransferTitleFetchRequest", internalFundsTransferTitleFetchRequest);
 
-        org.ais.jcash.WsdlT24Api.dto.internalfundstransferpayment.Root   r;
-        InternalFundsTransferResponse internalFundsTransferResponse=new InternalFundsTransferResponse();
         String x = getResponseFromPostAPI(headerMap, paramMap, url);
         try {
             ObjectMapper mapper = new ObjectMapper();
-            r = mapper.readValue(x,  org.ais.jcash.WsdlT24Api.dto.internalfundstransferpayment.Root   .class);
-            if(r.getResponsecode()==1) {
+            org.ais.jcash.WsdlT24Api.dto.internalfundstransferpayment.Root r =
+                    mapper.readValue(x, org.ais.jcash.WsdlT24Api.dto.internalfundstransferpayment.Root.class);
+            if (r.getResponsecode() == 1) {
+                InternalFundsTransferResponse internalFundsTransferResponse = new InternalFundsTransferResponse();
                 internalFundsTransferResponse.setFromAccount(r.getData().getFromAccount());
                 internalFundsTransferResponse.setToAccount(r.getData().getToAccount());
                 internalFundsTransferResponse.setAmount(r.getData().getAmount());
+                return internalFundsTransferResponse;
             }
-            else{
-                return null;
-            }
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            LOG.warn("internalFundsTranfer live call failed: {}", e.getMessage());
         }
-        return internalFundsTransferResponse;
+        if (t24MockSupport.isMockFallbackOnError()) {
+            return t24MockSupport.mockInternalFundsTransfer(fromAccount, toAccount, amount);
+        }
+        return null;
     }
 
-    //Generate random Number
-    //
     public String generateRrnNumber() {
-        int length = Integer.valueOf(6);
+        int length = 6;
         Random random = new Random();
         char[] digits = new char[length];
         digits[0] = (char) (random.nextInt(9) + '1');
