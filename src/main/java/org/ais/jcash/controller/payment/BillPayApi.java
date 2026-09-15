@@ -14,6 +14,9 @@ import org.ais.jcash.dto.billpay.BillPayCategoryDto;
 import org.ais.jcash.dto.billpay.BillPayCompanyDto;
 import org.ais.jcash.dto.billpay.BillPayFetchRequest;
 import org.ais.jcash.dto.billpay.BillPayPayRequest;
+import org.ais.jcash.workflow.dto.CmsParkPaymentRequest;
+import org.ais.jcash.workflow.dto.CmsTxnDto;
+import org.ais.jcash.workflow.service.CmsWorkflowService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,8 +27,11 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
+import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Api(value = "Bill Pay APIs", description = "Category → Company → Fetch → Pay")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
@@ -43,6 +49,9 @@ public class BillPayApi extends AbstractApi {
 
     @Autowired
     private WsdlT24IServiceImpl wsdlT24IService;
+
+    @Autowired
+    private CmsWorkflowService cmsWorkflowService;
 
     @RequestMapping(value = "/categories", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<HashMap<String, Object>> categories() {
@@ -112,7 +121,28 @@ public class BillPayApi extends AbstractApi {
             if (request.getSecurityDeviceCode() == null || request.getSecurityDeviceCode().trim().length() < 7) {
                 return getResponseFormat(HttpStatus.METHOD_NOT_ALLOWED, "Security device code required", null);
             }
-            HashMap<String, Object> result = new HashMap<>(billPayCatalogueService.payBill(request));
+            // Park into CMS workflow instead of immediate pay
+            CmsParkPaymentRequest park = new CmsParkPaymentRequest();
+            park.setProductCode("BILLPAY");
+            try {
+                park.setAmount(new BigDecimal(String.valueOf(request.getAmount() == null ? "0" : request.getAmount())));
+            } catch (Exception ex) {
+                park.setAmount(BigDecimal.ZERO);
+            }
+            park.setCustRef(request.getCustRef() != null ? request.getCustRef() : "BILL-" + System.currentTimeMillis());
+            park.setDebitAccount(request.getFromAccount());
+            park.setBenTitle(request.getCompanyName() != null ? request.getCompanyName() : request.getCompanyCode());
+            park.setBenIban(request.getConsumerNumber());
+            park.setPayloadJson("{\"category\":\"" + request.getCategoryCode() + "\",\"company\":\"" + request.getCompanyCode() + "\"}");
+            CmsTxnDto txn = cmsWorkflowService.park(user, park);
+            Map<String, Object> result = new LinkedHashMap<>(txn.toMap());
+            result.put("status", "PENDING_AUTH");
+            result.put("message", "Bill payment parked for authorization (MOCK)");
+            result.put("rrn", "P" + txn.getTxnId());
+            result.put("companyName", request.getCompanyName());
+            result.put("amount", request.getAmount());
+            result.put("mockMode", true);
+            result.put("notificationToast", "Notification sent to " + txn.getNextApproverEmail());
             return getResponseFormat(HttpStatus.OK, String.valueOf(result.get("message")), result);
         } catch (Exception e) {
             LOG.error("payBill error: {}", e.getLocalizedMessage());

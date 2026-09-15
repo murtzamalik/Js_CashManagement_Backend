@@ -13,6 +13,9 @@ import org.ais.jcash.WsdlT24Api.service.WsdlT24IServiceImpl;
 import org.ais.jcash.controller.AbstractApi;
 import org.ais.jcash.dto.*;
 import org.ais.jcash.model.*;
+import org.ais.jcash.workflow.dto.CmsParkPaymentRequest;
+import org.ais.jcash.workflow.dto.CmsTxnDto;
+import org.ais.jcash.workflow.service.CmsWorkflowService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +67,9 @@ public class JsCashPaymentPostApi extends AbstractApi {
     @Autowired
     private T24MockSupport t24MockSupport;
 
+    @Autowired
+    private CmsWorkflowService cmsWorkflowService;
+
 
     @RequestMapping(value = "/initiateSingleTransaction", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<HashMap<String, Object>> initiateSingleTransaction(@Valid @RequestBody InitiateSingleTransactionRequest initiateSingleTransactionRequest, HttpServletRequest request) {
@@ -85,7 +91,7 @@ public class JsCashPaymentPostApi extends AbstractApi {
 
                 if (customizedLovAuthCompanyProduct != null) {
 
-                    // Pure mock IBFT path — skip DB FKs for synthetic product id
+                    // Pure mock IBFT path — park into CMS workflow (maker-checker-release)
                     if (t24MockSupport.isMockEnabled()
                             && t24MockSupport.isMockProductId(initiateSingleTransactionRequest.getProductId())
                             && "IBFT".equalsIgnoreCase(customizedLovAuthCompanyProduct.getProductCode())) {
@@ -93,20 +99,27 @@ public class JsCashPaymentPostApi extends AbstractApi {
                                 ? initiateSingleTransactionRequest.getDebitAcctNoId()
                                 : "1000000001");
                         String toAcc = initiateSingleTransactionRequest.getBenActNo();
-                        String amount = String.valueOf(initiateSingleTransactionRequest.getTransferAmnt());
                         String imd = initiateSingleTransactionRequest.getToBankIMD();
                         if (imd == null || imd.trim().isEmpty()) {
                             imd = "000000";
                         }
-                        IBFTTitleFetchResponse ibftPay = wsdlT24IService.IbftPayment(fromAcc, toAcc, imd, amount);
-                        Map<String, Object> data = new LinkedHashMap<>();
+                        CmsParkPaymentRequest park = new CmsParkPaymentRequest();
+                        park.setProductCode("IBFT");
+                        park.setAmount(BigDecimal.valueOf(initiateSingleTransactionRequest.getTransferAmnt()));
+                        park.setCustRef(initiateSingleTransactionRequest.getCustRef());
+                        park.setDebitAccount(fromAcc);
+                        park.setBenIban(toAcc);
+                        park.setBenTitle(initiateSingleTransactionRequest.getAccountTitle());
+                        park.setBenPhone(initiateSingleTransactionRequest.getMobileNo());
+                        park.setBenBankImd(imd);
+                        park.setIdempotencyKey("IBFT-" + loggedUserDetail.getUserId() + "-" + initiateSingleTransactionRequest.getCustRef());
+                        CmsTxnDto txn = cmsWorkflowService.park(loggedUserDetail, park);
+                        Map<String, Object> data = new LinkedHashMap<>(txn.toMap());
                         data.put("mockMode", true);
-                        data.put("payment", ibftPay);
-                        data.put("accountTitle", initiateSingleTransactionRequest.getAccountTitle());
-                        data.put("iban", toAcc);
-                        data.put("amount", amount);
-                        LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); MOCK IBFT without DB \n\n\n");
-                        return getResponseFormat(HttpStatus.OK, "IBFT Transaction Performed Successfully (MOCK)", data);
+                        data.put("parked", true);
+                        data.put("notificationToast", "Notification sent to " + txn.getNextApproverEmail() + " / " + txn.getNextApproverMobile());
+                        LOG.info("\n EXITING THIS METHOD == initiateSingleTransaction(); MOCK IBFT parked txnId={} \n\n\n", txn.getTxnId());
+                        return getResponseFormat(HttpStatus.OK, "IBFT parked for authorization (MOCK)", data);
                     }
 
                     TblTransHead tblTransHead = new TblTransHead();
@@ -568,9 +581,25 @@ public class JsCashPaymentPostApi extends AbstractApi {
                     }
 
                     if (pureMockProduct) {
-                        rowResult.put("status", "SUCCESS");
-                        rowResult.put("message", "IBFT processed (MOCK)");
+                        String custRef = row.getCustRef();
+                        if (custRef == null || custRef.trim().isEmpty()) {
+                            custRef = (bulkIbftRequest.getBatchRef() == null ? "IBFT-BULK" : bulkIbftRequest.getBatchRef()) + "-" + rowIndex;
+                        }
+                        CmsParkPaymentRequest park = new CmsParkPaymentRequest();
+                        park.setProductCode("IBFT");
+                        park.setAmount(BigDecimal.valueOf(row.getTransferAmnt()));
+                        park.setCustRef(custRef);
+                        park.setDebitAccount(String.valueOf(bulkIbftRequest.getDebitAcctNoId() > 0 ? bulkIbftRequest.getDebitAcctNoId() : 1000000001L));
+                        park.setBenIban(row.getIban());
+                        park.setBenTitle(row.getAccountTitle());
+                        park.setBenPhone(row.getMobileNo());
+                        park.setBenBankName(row.getBankName());
+                        park.setIdempotencyKey("IBFT-BULK-" + bulkIbftRequest.getBatchRef() + "-" + rowIndex);
+                        CmsTxnDto txn = cmsWorkflowService.park(loggedUserDetail, park);
+                        rowResult.put("status", "PENDING_AUTH");
+                        rowResult.put("message", "Parked for authorization (MOCK)");
                         rowResult.put("mockMode", true);
+                        rowResult.put("txnId", txn.getTxnId());
                         rowResult.put("accountTitle", row.getAccountTitle());
                         successCount++;
                         results.add(rowResult);

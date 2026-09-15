@@ -68,6 +68,19 @@ public class T24MockSupport {
         return map;
     }
 
+    public Map<String, Object> mockBalanceInquiry(String accountNumber) {
+        String acct = accountNumber == null || accountNumber.trim().isEmpty() ? "1000000001" : accountNumber.trim();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("accountNumber", acct);
+        data.put("accountTitle", "DFS DEMO ACCOUNT " + safeSuffix(acct));
+        data.put("availableBalance", "1250000.00");
+        data.put("ledgerBalance", "1254500.00");
+        data.put("currency", "PKR");
+        data.put("branchName", "MOCK MAIN BRANCH");
+        data.put("mockMode", mockEnabled);
+        return data;
+    }
+
     /**
      * Synthetic IBFT product when the logged-in user has no company IBFT product assigned.
      */

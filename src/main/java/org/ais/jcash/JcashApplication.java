@@ -9,12 +9,14 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.WebApplicationInitializer;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 @SpringBootApplication
 @ComponentScan(basePackages = "org.ais.jcash.*")
 @EnableSwagger2
+@EnableScheduling
 public class JcashApplication extends SpringBootServletInitializer implements WebApplicationInitializer {
 
     public static void main(String[] args) {
